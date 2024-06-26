@@ -43,7 +43,7 @@ class MyIterableDataset(d.IterableDataset):
             end = min(start + per_worker, self.num_articles)
         return helper(start, end)
     
-def give_dataloader(development = True):
+def give_dataloader(batch_size=1, development=True):
     if development:
         wiki_huggingface_dataset = load_dataset("wikipedia", "20220301.simple") # a smaller dataset for development
     else:
@@ -52,7 +52,7 @@ def give_dataloader(development = True):
     wiki_huggingface_dataset = wiki_huggingface_dataset["train"]
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     ds = MyIterableDataset(wiki_huggingface_dataset, tokenizer, 20, article_indices=range(wiki_huggingface_dataset.num_rows))
-    return d.DataLoader(ds, collate_fn=lambda x: x)
+    return d.DataLoader(ds, batch_size)
 
 #example of usage:
 # data_loader = give_dataloader()
