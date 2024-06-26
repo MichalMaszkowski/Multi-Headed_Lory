@@ -1,8 +1,8 @@
 # !pip install datasets # command to install datasets package from huggingface in colab
-
+# !pip install transformers to install transformers package (BERT tokenizer)
 from datasets import load_dataset
 import torch.utils.data as d
-from torchtext.data import get_tokenizer
+from transformers import BertTokenizer
 import math
 
 class MyIterableDataset(d.IterableDataset):
@@ -18,7 +18,7 @@ class MyIterableDataset(d.IterableDataset):
                 all_whole = False
                 index = 0
                 article = self.dataset[i]["text"]
-                tokenized = self.tokenizer(article)
+                tokenized = self.tokenizer(article, return_tensors='pt')
                 length = len(tokenized)
                 if index + self.seq_len > length:
                     all_whole = True
@@ -49,9 +49,9 @@ def give_dataloader(development = True):
         wiki_huggingface_dataset = load_dataset("wikipedia", "20220301.en") # large dataset for training
 
     wiki_huggingface_dataset = wiki_huggingface_dataset["train"]
-    tokenizer = get_tokenizer("basic_english")
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     ds = MyIterableDataset(wiki_huggingface_dataset, tokenizer, 20, article_indices=range(wiki_huggingface_dataset.num_rows))
-    return d.DataLoader(ds)
+    return d.DataLoader(ds, collate_fn=lambda x: x)
 
 #example of usage:
 # data_loader = give_dataloader()
