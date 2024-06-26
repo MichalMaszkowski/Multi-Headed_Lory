@@ -19,6 +19,7 @@ class MyIterableDataset(d.IterableDataset):
                 index = 0
                 article = self.dataset[i]["text"]
                 tokenized = self.tokenizer(article, return_tensors='pt')
+                tokenized = tokenized["input_ids"][0][1:]
                 length = len(tokenized)
                 if index + self.seq_len > length:
                     all_whole = True
