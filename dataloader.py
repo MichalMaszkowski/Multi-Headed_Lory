@@ -70,9 +70,9 @@ def give_dataloaders(batch_size=1, seq_len=20, development=True):
     train_dataset = MyIterableDataset(train_dataset, tokenizer, seq_len, num_articles=train_dataset.num_rows)
     val_dataset = MyIterableDataset(val_dataset, tokenizer, seq_len, num_articles=val_dataset.num_rows)
     test_dataset = MyIterableDataset(test_dataset, tokenizer, seq_len, num_articles=test_dataset.num_rows)
-    return {"train_dataloader": d.DataLoader(train_dataset, batch_size),
-            "val_dataloader": d.DataLoader(val_dataset, batch_size),
-            "test_dataloader": d.DataLoader(test_dataset, batch_size)}
+    return {"train_dataloader": d.DataLoader(train_dataset, batch_size, pin_memory=True),
+            "val_dataloader": d.DataLoader(val_dataset, batch_size, pin_memory=True),
+            "test_dataloader": d.DataLoader(test_dataset, batch_size, pin_memory=True)}
 
 # # example of usage:
 # l = give_dataloaders()
