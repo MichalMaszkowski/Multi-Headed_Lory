@@ -2,6 +2,7 @@ import torch
 from torch import nn as nn
 from typing import List, Tuple, Any, Optional
 import math
+import lightning.pytorch as pl
 
 AttentionT = torch.tensor  # torch tensor of shape [BATCH, SEQ_LEN, NUM_HEADS, HEAD_DIM]
 HiddenT = torch.tensor
@@ -226,9 +227,9 @@ class TransformerBlock(torch.nn.Module):
     
 # TokensT = torch.tensor # [BATCH, SEQ_LEN]
 # ModelLT = torch.tensor # [BATCH, SEQ_LEN, VOCAB_SIZE]
+#implemented a training step using pytorch lightning
 
-
-class Transformer(torch.nn.Module):
+class Transformer(pl.LightningModule):
     def __init__(self, config) -> None:
         super().__init__()
 
@@ -237,6 +238,11 @@ class Transformer(torch.nn.Module):
         self.hidden_dim = config.hidden_size
         self.forward_layer = config.forward_layer_class
         self.num_heads = config.num_attention_heads
+
+        self.loss_fn = config.loss_fn
+        self.py_lightning_loging = config.py_lightning_loging
+        self.lr = config.lr
+        self.betas = config.betas
 
         self.embedding = torch.nn.Embedding(self.vocab_size, self.hidden_dim)
 
@@ -256,6 +262,21 @@ class Transformer(torch.nn.Module):
 
         x = self.final_proj(x)
         return x
+    
+    def training_step(self, batch, batch_idx):
+        inputs = batch[:, :-1]
+        labels = batch[:, 1: ]
+        outputs = self.forward(inputs)
+        outputs = torch.transpose(outputs, 1, 2)
+        loss = self.loss_fn(outputs, labels)
+
+        print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
+        if self.py_lightning_loging == True:
+            self.py_lightning_loging('Training Loss', loss, on_step=True, on_epoch=True)
+        return loss
+    
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr = self.lr, betas = self.betas)
 
 # Input: [batch_size, seq_len, hidden_size] - input embeddings
 # Output: [batch_size, seq_len, num_experts] - expert routing weights
