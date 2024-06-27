@@ -1,15 +1,19 @@
 # !pip install datasets # command to install datasets package from huggingface in colab
 # !pip install transformers to install transformers package (BERT tokenizer)
-from datasets import load_dataset
+import datasets
+import torch
 import torch.utils.data as d
 from transformers import BertTokenizer
 import math
 
+# fraction of articles in respectively train, val, test dataset split:
+proportions = [0.8, 0.1, 0.1]
+
 class MyIterableDataset(d.IterableDataset):
-    def __init__(self, dataset, tokenizer, seq_len, article_indices):
+    def __init__(self, dataset, tokenizer, seq_len, num_articles):
         super(MyIterableDataset).__init__()
         self.dataset = dataset
-        self.num_articles = len(article_indices)
+        self.num_articles = num_articles
         self.tokenizer = tokenizer
         self.seq_len = seq_len
     def __iter__(self):
@@ -43,18 +47,30 @@ class MyIterableDataset(d.IterableDataset):
             end = min(start + per_worker, self.num_articles)
         return helper(start, end)
     
-def give_dataloader(batch_size=1, development=True):
+def give_dataloaders(batch_size=1, development=True):
+    """Returns a dictionary with train_dataloader, val_dataloader and test_dataloader"""
     if development:
-        wiki_huggingface_dataset = load_dataset("wikipedia", "20220301.simple") # a smaller dataset for development
+        wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple") # a smaller dataset for development
     else:
-        wiki_huggingface_dataset = load_dataset("wikipedia", "20220301.en") # large dataset for training
+        wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.en") # large dataset for training
 
     wiki_huggingface_dataset = wiki_huggingface_dataset["train"]
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    ds = MyIterableDataset(wiki_huggingface_dataset, tokenizer, 20, article_indices=range(wiki_huggingface_dataset.num_rows))
-    return d.DataLoader(ds, batch_size)
+    l = d.random_split(wiki_huggingface_dataset, lengths=proportions, generator=torch.Generator().manual_seed(42))
+    train_dataset, val_dataset, test_dataset = l[0].dataset, l[1].dataset, l[2].dataset
 
-#example of usage:
-# data_loader = give_dataloader()
-# sample = next(iter(data_loader))
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    
+    train_dataset = MyIterableDataset(train_dataset, tokenizer, 20, num_articles=train_dataset.num_rows)
+    val_dataset = MyIterableDataset(val_dataset, tokenizer, 20, num_articles=val_dataset.num_rows)
+    test_dataset = MyIterableDataset(test_dataset, tokenizer, 20, num_articles=test_dataset.num_rows)
+    return {"train_dataloader": d.DataLoader(train_dataset, batch_size),
+            "val_dataloader": d.DataLoader(val_dataset, batch_size),
+            "test_dataloader": d.DataLoader(test_dataset, batch_size)}
+
+# # example of usage:
+# l = give_dataloaders()
+# train_dataloader = l["train_dataloader"]
+# val_dataloader = l["val_dataloader"]
+# test_dataloader = l["test_dataloader"]
+# sample = next(iter(train_dataloader))
 # print(sample)
