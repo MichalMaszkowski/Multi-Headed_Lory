@@ -47,8 +47,15 @@ class MyIterableDataset(d.IterableDataset):
             end = min(start + per_worker, self.num_articles)
         return helper(start, end)
     
-def give_dataloaders(batch_size=1, development=True):
-    """Returns a dictionary with train_dataloader, val_dataloader and test_dataloader"""
+def give_dataloaders(batch_size=1, seq_len=20, development=True):
+    """Returns a dictionary with train_dataloader, val_dataloader and test_dataloader
+    which are created from huggingface wikipedia dataset
+    that is split according to "proportions" variable
+
+    dataloaders yield batches of sequnces of token_ids
+    (in fact: a tensor of shape (batch_size, seq_len))
+
+    for development set development atribute to True, to use much smaller dataset"""
     if development:
         wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple") # a smaller dataset for development
     else:
@@ -60,9 +67,9 @@ def give_dataloaders(batch_size=1, development=True):
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     
-    train_dataset = MyIterableDataset(train_dataset, tokenizer, 20, num_articles=train_dataset.num_rows)
-    val_dataset = MyIterableDataset(val_dataset, tokenizer, 20, num_articles=val_dataset.num_rows)
-    test_dataset = MyIterableDataset(test_dataset, tokenizer, 20, num_articles=test_dataset.num_rows)
+    train_dataset = MyIterableDataset(train_dataset, tokenizer, seq_len, num_articles=train_dataset.num_rows)
+    val_dataset = MyIterableDataset(val_dataset, tokenizer, seq_len, num_articles=val_dataset.num_rows)
+    test_dataset = MyIterableDataset(test_dataset, tokenizer, seq_len, num_articles=test_dataset.num_rows)
     return {"train_dataloader": d.DataLoader(train_dataset, batch_size),
             "val_dataloader": d.DataLoader(val_dataset, batch_size),
             "test_dataloader": d.DataLoader(test_dataset, batch_size)}
