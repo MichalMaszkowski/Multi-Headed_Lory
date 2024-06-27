@@ -52,7 +52,7 @@ def give_dataloaders(batch_size=1, seq_len=20, development=True):
 
     for development set development atribute to True, to use much smaller dataset"""
     if development:
-        wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple") # a smaller dataset for development
+        wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple", trust_remote_code=True) # a smaller dataset for development
     else:
         wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.en") # large dataset for training
 
