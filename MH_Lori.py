@@ -14,7 +14,8 @@ class Router_mh_lori(nn.Module):
         self.config = config
         self.hidden_size = int(config.hidden_size / config.num_MH_MOE_heads)
         self.num_experts = config.num_experts
-        self.expert_embeddings = nn.Parameter(torch.randn(self.hidden_size, self.num_experts)).to(config.device)
+        self.device = config.device
+        self.expert_embeddings = nn.Parameter(torch.randn(self.hidden_size, self.num_experts))
         torch.nn.init.kaiming_uniform_(self.expert_embeddings, nonlinearity='linear')
 
     def forward(self, x):
@@ -24,7 +25,7 @@ class Router_mh_lori(nn.Module):
     
 class MH_Lori(nn.Module):
     def __init__(self, config):
-        super().__init__()
+        super(MH_Lori, self).__init__()
         self.config = config
 
         self.batch_size = config.batch_size
@@ -34,11 +35,13 @@ class MH_Lori(nn.Module):
         self.head_dim = int(config.hidden_size / config.num_MH_MOE_heads)
         self.no_segments = config.no_lori_segments
         self.segment_len = int(self.seq_len / self.no_segments)
+        self.device = config.device
+        
 
-        self.router = Router_mh_lori(config)
+        self.router = Router_mh_lori(config).to(self.device)
 
-        self.multi_head_layer = nn.Linear(self.hidden_dim, self.hidden_dim)
-        self.merge_layer = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.multi_head_layer = nn.Linear(self.hidden_dim, self.hidden_dim).to(self.device)
+        self.merge_layer = nn.Linear(self.hidden_dim, self.hidden_dim).to(self.device)
         # Initialization
         nn.init.xavier_uniform_(self.multi_head_layer.weight, gain=1 / math.sqrt(2))
         nn.init.xavier_uniform_(self.merge_layer.weight)
@@ -47,10 +50,13 @@ class MH_Lori(nn.Module):
         self.num_experts = config.num_experts
         self.intermediate_size = config.intermediate_size
 
-        self.first_linear = nn.Parameter(torch.randn(self.num_experts, self.intermediate_size, self.head_dim)).to(config.device)
+        self.first_linear = nn.Parameter(torch.randn((self.num_experts, self.intermediate_size, self.head_dim)))
         torch.nn.init.kaiming_uniform_(self.first_linear, nonlinearity='linear')
-        self.second_linear = nn.Parameter(torch.randn(self.num_experts, self.head_dim, self.intermediate_size)).to(config.device)
+        self.second_linear = nn.Parameter(torch.randn((self.num_experts, self.head_dim, self.intermediate_size)))
         torch.nn.init.kaiming_uniform_(self.second_linear, nonlinearity='linear')
+
+        self.to(self.device)
+
 
     def forward(self, x):
         #x.shape = [batch size, seq len, hidden dim]
@@ -59,16 +65,16 @@ class MH_Lori(nn.Module):
         x = x.reshape(self.batch_size, self.seq_len, self.num_heads, self.head_dim).contiguous()
         #Dividing into lori segments
         x = x.reshape(self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim).contiguous()
-        #calculating routing weights
-        average_segment_embedding = torch.mean(x, dim = 2)
+        average_segment_embedding = torch.mean(x, dim = 2).to(self.device)
         # average_segment_embedding.size = [batch size, no segments, num_heads, head_dim]
-        expert_weights = self.router(average_segment_embedding)
+        expert_weights = self.router(average_segment_embedding).to(self.device)
         # expert_weights shape = [bs, no seq, num heads, num experts]
         # calculating merged experts
         expert_weights = expert_weights.reshape(self.num_experts, 1, 1, self.no_segments, self.num_heads, self.batch_size) 
         merged_experts_1 = self.first_linear.reshape(self.num_experts, self.intermediate_size, self.head_dim, 1, 1, 1)
         merged_experts_1 = (merged_experts_1 * expert_weights).sum(dim = 0)
         merged_experts_1 = merged_experts_1.reshape(self.batch_size, self.no_segments, self.num_heads, self.intermediate_size, self.head_dim)
+        # print(f'merged expert 1 parameter count: {torch.numel(merged_experts_1):,}')
         merged_experts_1 = merged_experts_1[:, :-1, :, :, :] #we discard the last segment as expert created for it is never used
 
         merged_experts_2 = self.second_linear.reshape(self.num_experts, self.head_dim, self.intermediate_size, 1, 1, 1)
@@ -105,3 +111,13 @@ class MH_Lori(nn.Module):
         result = self.merge_layer(result)
 
         return result
+    
+    def test_if_reshaping_works(self, x):
+        input = x
+        x = x.reshape(self.batch_size, self.seq_len, self.num_heads, self.head_dim).contiguous()
+        x = x.reshape(self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim).contiguous()
+        x = x.reshape(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim).contiguous()
+        result = x
+        result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
+        result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
+        print(torch.equal(result, input))
