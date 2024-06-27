@@ -19,20 +19,15 @@ class MyIterableDataset(d.IterableDataset):
     def __iter__(self):
         def helper(start, end):
             for i in range(start, end):
-                all_whole = False
                 index = 0
                 article = self.dataset[i]["text"]
                 tokenized = self.tokenizer(article, return_tensors='pt')
-                tokenized = tokenized["input_ids"][0][1:]
+                tokenized = tokenized["input_ids"][0][1:] # unpack from 2dim tensor and skip the prepended bert mask token
                 length = len(tokenized)
-                if index + self.seq_len > length:
-                    all_whole = True
-                while (not all_whole):
+                while (index + self.seq_len <= length):
                     yield tokenized[index:index+self.seq_len]
                     index += self.seq_len
-                    if index + self.seq_len > length:
-                        all_whole = True
-                if all_whole:
+                if (length - index) > (self.seq_len // 2):
                     yield tokenized[index:]
 
         worker_info = d.get_worker_info()
