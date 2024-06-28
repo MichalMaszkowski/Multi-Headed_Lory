@@ -233,6 +233,7 @@ class Transformer(pl.LightningModule):
     def __init__(self, config) -> None:
         super().__init__()
 
+        self.config = config
         self.vocab_size = config.vocab_size
         self.n_layers = config.n_layers
         self.hidden_dim = config.hidden_size
@@ -243,6 +244,10 @@ class Transformer(pl.LightningModule):
         self.py_lightning_loging = config.py_lightning_loging
         self.lr = config.lr
         self.betas = config.betas
+
+        #for loging purposes
+        self.no_of_skiped_baches = 0
+        self.no_of_total_batches = 0
 
         self.embedding = torch.nn.Embedding(self.vocab_size, self.hidden_dim)
 
@@ -265,6 +270,11 @@ class Transformer(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         inputs = batch[:, :-1]
+        self.no_of_total_batches += 1
+        if inputs.shape[1] != self.config.seq_len:
+            print('Input shape does not corespond to config.seq_len')
+            self.no_of_skiped_baches += 1
+            return None #we skip this training step
         labels = batch[:, 1: ]
         outputs = self.forward(inputs)
         outputs = torch.transpose(outputs, 1, 2)
