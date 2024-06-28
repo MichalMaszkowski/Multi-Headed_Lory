@@ -58,7 +58,7 @@ def give_dataloaders(batch_size=1, seq_len=20, development=True):
 
     wiki_huggingface_dataset = wiki_huggingface_dataset["train"]
     l = d.random_split(wiki_huggingface_dataset, lengths=proportions, generator=torch.Generator().manual_seed(42))
-    train_dataset, val_dataset, test_dataset = l[0].dataset, l[1].dataset, l[2].dataset
+    train_dataset, val_dataset, test_dataset = l[0], l[1], l[2]
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     
