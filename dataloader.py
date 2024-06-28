@@ -27,8 +27,6 @@ class MyIterableDataset(d.IterableDataset):
                 while (index + self.seq_len <= length):
                     yield tokenized[index:index+self.seq_len]
                     index += self.seq_len
-                if (length - index) > (self.seq_len // 2):
-                    yield tokenized[index:]
 
         worker_info = d.get_worker_info()
         if worker_info is None:  # single-process data loading, return the full iterator
