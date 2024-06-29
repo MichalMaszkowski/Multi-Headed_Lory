@@ -271,8 +271,8 @@ class Transformer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         inputs = batch[:, :-1]
         self.no_of_total_batches += 1
-        if inputs.shape[1] != self.config.seq_len:
-            print('Input shape does not corespond to config.seq_len')
+        if inputs.shape != (self.config.batch_size, self.config.seq_len):
+            print('ERROR: Input has inproper shape')
             self.no_of_skiped_baches += 1
             return None #we skip this training step
         labels = batch[:, 1: ]

@@ -36,16 +36,18 @@ class MH_Lori(nn.Module):
         self.no_segments = config.no_lori_segments
         self.segment_len = int(self.seq_len / self.no_segments)
         self.device = config.device
+        self.treat_mh_lori_as_regular_lori = config.treat_mh_lori_as_regular_lori
         
 
         self.router = Router_mh_lori(config).to(self.device)
 
-        self.multi_head_layer = nn.Linear(self.hidden_dim, self.hidden_dim).to(self.device)
-        self.merge_layer = nn.Linear(self.hidden_dim, self.hidden_dim).to(self.device)
-        # Initialization
-        nn.init.xavier_uniform_(self.multi_head_layer.weight, gain=1 / math.sqrt(2))
-        nn.init.xavier_uniform_(self.merge_layer.weight)
-        nn.init.constant_(self.merge_layer.bias, 0.0)
+        if self.treat_mh_lori_as_regular_lori == False:
+            self.multi_head_layer = nn.Linear(self.hidden_dim, self.hidden_dim).to(self.device)
+            self.merge_layer = nn.Linear(self.hidden_dim, self.hidden_dim).to(self.device)
+            # Initialization
+            nn.init.xavier_uniform_(self.multi_head_layer.weight, gain=1 / math.sqrt(2))
+            nn.init.xavier_uniform_(self.merge_layer.weight)
+            nn.init.constant_(self.merge_layer.bias, 0.0)
 
         self.num_experts = config.num_experts
         self.intermediate_size = config.intermediate_size
@@ -60,7 +62,8 @@ class MH_Lori(nn.Module):
 
     def forward(self, x):
         #x.shape = [batch size, seq len, hidden dim]
-        x = self.multi_head_layer(x) 
+        if self.treat_mh_lori_as_regular_lori == False:
+            x = self.multi_head_layer(x) 
         #x.shape = [batch size, seq len, hidden dim]
         x = x.reshape(self.batch_size, self.seq_len, self.num_heads, self.head_dim).contiguous()
         #Dividing into lori segments
@@ -108,7 +111,9 @@ class MH_Lori(nn.Module):
         # reshape back into orginal shape
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
-        result = self.merge_layer(result)
+
+        if self.treat_mh_lori_as_regular_lori == False:
+            result = self.merge_layer(result)
 
         return result
     

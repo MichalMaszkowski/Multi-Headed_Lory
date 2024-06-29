@@ -7,7 +7,7 @@ from transformers import BertTokenizer
 import math
 
 # fraction of articles in respectively train, val, test dataset split:
-proportions = [0.8, 0.1, 0.1]
+proportions = [0.4, 0.4, 0.2]
 
 class MyIterableDataset(d.IterableDataset):
     def __init__(self, dataset, tokenizer, seq_len, num_articles):
