@@ -348,6 +348,10 @@ class VectorizedMoE(nn.Module):
         
         experts_where_ones = torch.where((weights <= 0), 0, 1) #ceiling of weights
         experts_where_ones = torch.reshape(experts_where_ones, shape=(-1, self.num_experts)) #[num_of_tokens, num_experts]
+        expert_frequency = experts_where_ones.sum(dim=0, keepdim=True) / experts_where_ones.shape[0] #[1, num_experts]
+        expert_frequency = expert_frequency.unsqueeze(dim=0)
+        load_balancing_loss += (expert_frequency * soft_dot).sum()
+
         capacity_aware_ones = torch.where((torch.cumsum(experts_where_ones, dim= 0) <= expert_capacity), input = experts_where_ones, other = 0)
 
         capacity_aware_weights = weights.reshape(shape=(-1, self.num_experts)) * capacity_aware_ones
