@@ -296,10 +296,10 @@ class Transformer(pl.LightningModule):
 # Input: [batch_size, seq_len, hidden_size] - input embeddings
 # Output: [batch_size, seq_len, num_experts] - expert routing weights
 class Router(nn.Module):
+    """Corresponds to gating function in the Multi-Head Mixture-of-Experts paper"""
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.num_experts_per_token = config.num_experts_per_token
         self.hidden_size = config.hidden_size
         self.num_experts = config.num_experts
 
@@ -309,9 +309,7 @@ class Router(nn.Module):
     def forward(self, x): # as in the Multi-Head Mixture-of-Experts paper
         dot = torch.einsum("bsh,eh->bse", x, self.expert_embeddings)
         soft_dot = torch.nn.functional.softmax(dot, dim=-1)
-        top_k_weights = torch.topk(soft_dot, k=self.num_experts_per_token)
-        res = torch.zeros_like(dot).scatter_(dim=-1, index=top_k_weights.indices, src=top_k_weights.values)
-        return res
+        return soft_dot
 
 # Input: [batch_size, seq_len, hidden_size] - input embeddings
 # Output: [batch_size, seq_len, hidden_size] - output embeddings
@@ -343,8 +341,10 @@ class VectorizedMoE(nn.Module):
         # Load balancing loss as in section 3.2 in the Multi-Head Mixture-of-Experts paper:
         load_balancing_loss = self.num_experts / (batch_size * seq_len) # first factor in the equation (10)
 
-        weights = self.router(x) #[batch_size, seq_len, num_experts]
-
+        soft_dot = self.router(x) #[batch_size, seq_len, num_experts]
+        top_k_weights = torch.topk(soft_dot, k=self.num_experts_per_token)
+        weights = torch.zeros_like(soft_dot).scatter_(dim=-1, index=top_k_weights.indices, src=top_k_weights.values)
+        
         experts_where_ones = torch.where((weights <= 0), 0, 1) #ceiling of weights
         experts_where_ones = torch.reshape(experts_where_ones, shape=(-1, self.num_experts)) #[num_of_tokens, num_experts]
         capacity_aware_ones = torch.where((torch.cumsum(experts_where_ones, dim= 0) <= expert_capacity), input = experts_where_ones, other = 0)
