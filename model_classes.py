@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 from typing import List, Tuple, Any, Optional
 import math
-import lightning.pytorch as pl
+from pytorch_lightning import LightningModule
+
 
 AttentionT = torch.tensor  # torch tensor of shape [BATCH, SEQ_LEN, NUM_HEADS, HEAD_DIM]
 HiddenT = torch.tensor
@@ -230,7 +231,7 @@ class TransformerBlock(torch.nn.Module):
 # ModelLT = torch.tensor # [BATCH, SEQ_LEN, VOCAB_SIZE]
 #implemented a training step using pytorch lightning
 
-class Transformer(pl.LightningModule):
+class Transformer(LightningModule):
     def __init__(self, config) -> None:
         super().__init__()
 
@@ -250,6 +251,8 @@ class Transformer(pl.LightningModule):
         #for loging purposes
         self.no_of_skiped_baches = 0
         self.no_of_total_batches = 0
+        self.val_losses_list=[]
+        self.train_losses_list=[]
 
         self.embedding = torch.nn.Embedding(self.vocab_size, self.hidden_dim)
 
@@ -288,6 +291,12 @@ class Transformer(pl.LightningModule):
         loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
 
         print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
+        log_entry = {
+            'batch_idx': batch_idx,
+            'train_loss': loss.item(),  # Assuming loss is a tensor; convert to float if necessary
+            # Add more logs as needed
+        }
+        self.train_losses_list.append(log_entry)
         if self.py_lightning_loging == True:
             self.py_lightning_loging('Training Loss', loss, on_step=True, on_epoch=True)
         return loss
@@ -308,6 +317,13 @@ class Transformer(pl.LightningModule):
         loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
 
         print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
+        # Log entry for this validation step
+        log_entry = {
+            'batch_idx': batch_idx,
+            'val_loss': loss.item(),  # Assuming loss is a tensor; convert to float if necessary
+            # Add more logs as needed
+        }
+        self.val_losses_list.append(log_entry)
         if self.py_lightning_loging == True:
             self.py_lightning_loging('Validation Loss', loss, on_step=True, on_epoch=True)
         return loss
