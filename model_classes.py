@@ -301,11 +301,11 @@ class Router(nn.Module):
         self.expert_embeddings = nn.Parameter(torch.randn(self.num_experts, self.hidden_size)).to(config.device)
         torch.nn.init.kaiming_uniform_(self.expert_embeddings, nonlinearity='linear')
 
-    def forward(self, x):
+    def forward(self, x): # as in the Multi-Head Mixture-of-Experts paper
         dot = torch.einsum("bsh,eh->bse", x, self.expert_embeddings)
-        top_k_out = torch.topk(dot, k=self.num_experts_per_token)
-        top_k = (float("-inf") * torch.ones_like(dot)).scatter_(dim=-1, index=top_k_out.indices, src=top_k_out.values)
-        res = torch.nn.functional.softmax(top_k, dim=-1)
+        soft_dot = torch.nn.functional.softmax(dot, dim=-1)
+        top_k_weights = torch.topk(soft_dot, k=self.num_experts_per_token)
+        res = torch.zeros_like(dot).scatter_(dim=-1, index=top_k_weights.indices, src=top_k_weights.values)
         return res
 
 # Input: [batch_size, seq_len, hidden_size] - input embeddings
