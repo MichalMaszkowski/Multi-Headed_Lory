@@ -313,7 +313,7 @@ class Transformer(pl.LightningModule):
         return loss
     
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr = self.lr, betas = self.betas)
+        return torch.optim.AdamW(self.parameters(), lr = self.lr, betas = self.betas)
 
 # Input: [batch_size, seq_len, hidden_size] - input embeddings
 # Output: [batch_size, seq_len, num_experts] - expert routing weights
