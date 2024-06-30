@@ -32,8 +32,8 @@ class MH_MoE(nn.Module):
         config = self.config
         x = self.multi_head_layer(x) # first projection - it "merges" attention heads outputs
         x = x.reshape(config.batch_size, self.sub_seq_len, self.head_dim).contiguous()
-        x = self.nested_moe(x)
+        x, load_balancing_loss = self.nested_moe(x)
         x = x.reshape(config.batch_size, config.seq_len, config.num_MH_MOE_heads,
                       self.head_dim).reshape(config.batch_size, config.seq_len, config.hidden_size).contiguous()
         x = self.merge_layer(x) # second projection - it "merges" MoE heads outputs
-        return x
+        return x, load_balancing_loss

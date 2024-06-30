@@ -1,5 +1,5 @@
 import torch
-from torch import nn as nn
+import torch.nn as nn
 from typing import List, Tuple, Any, Optional
 import math
 import lightning.pytorch as pl
@@ -241,6 +241,7 @@ class Transformer(pl.LightningModule):
         self.num_heads = config.num_attention_heads
 
         self.loss_fn = config.loss_fn
+        self.load_balancing_coefficient = config.load_balancing_coefficient
         self.py_lightning_loging = config.py_lightning_loging
         self.lr = config.lr
         self.betas = config.betas
@@ -262,11 +263,14 @@ class Transformer(pl.LightningModule):
 
         x = self.embedding(x)
 
+        auxiliary_loss = 0
+
         for l in self.layers:
-            x = l(x)
+            x, load_balancing_loss = l(x)
+            auxiliary_loss += load_balancing_loss
 
         x = self.final_proj(x)
-        return x
+        return x, auxiliary_loss
     
     def training_step(self, batch, batch_idx):
         inputs = batch[:, :-1]
@@ -276,9 +280,10 @@ class Transformer(pl.LightningModule):
             self.no_of_skiped_baches += 1
             return None #we skip this training step
         labels = batch[:, 1: ]
-        outputs = self.forward(inputs)
+        outputs, auxiliary_loss = self.forward(inputs)
         outputs = torch.transpose(outputs, 1, 2)
-        loss = self.loss_fn(outputs, labels)
+        loss = self.loss_fn(outputs, labels) 
+        loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
 
         print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
         if self.py_lightning_loging == True:
@@ -332,7 +337,11 @@ class VectorizedMoE(nn.Module):
     def forward(self, x):
         batch_size, seq_len, hidden_size = x.shape
         #assert hidden_size == self.hidden_size
+
         expert_capacity = math.ceil(batch_size * seq_len / self.num_experts * self.capacity_factor)
+
+        # Load balancing loss as in section 3.2 in the Multi-Head Mixture-of-Experts paper:
+        load_balancing_loss = self.num_experts / (batch_size * seq_len) # first factor in the equation (10)
 
         weights = self.router(x) #[batch_size, seq_len, num_experts]
 
@@ -340,9 +349,6 @@ class VectorizedMoE(nn.Module):
         experts_where_ones = torch.reshape(experts_where_ones, shape=(-1, self.num_experts)) #[num_of_tokens, num_experts]
         capacity_aware_ones = torch.where((torch.cumsum(experts_where_ones, dim= 0) <= expert_capacity), input = experts_where_ones, other = 0)
 
-        # dec_seq = experts_where_ones.shape[0] - torch.arange(experts_where_ones.shape[0]).unsqueeze(dim = 1)
-        # numbered = (experts_where_ones * dec_seq)
-        # which = torch.topk(numbered, k=expert_capacity, dim = 0)
         capacity_aware_weights = weights.reshape(shape=(-1, self.num_experts)) * capacity_aware_ones
         which = torch.topk(capacity_aware_weights, k=expert_capacity, dim = 0)
         indices = which.indices.transpose(1,0)
@@ -363,7 +369,7 @@ class VectorizedMoE(nn.Module):
 
         final_result = torch.zeros_like(x).reshape((-1, hidden_size)).index_add_(dim = 0, index=index, source = result.reshape((-1, hidden_size)))
 
-        return final_result.reshape(x.shape)
+        return final_result.reshape(x.shape), load_balancing_loss
     
 class FeedForward(torch.nn.Module): #służy mi do tego by sprawdzić czy jak się podmieni vectorised moe w configu na cos innego to dziala
     """
