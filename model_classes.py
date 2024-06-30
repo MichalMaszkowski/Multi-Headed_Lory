@@ -274,6 +274,7 @@ class Transformer(pl.LightningModule):
         return x, auxiliary_loss
     
     def training_step(self, batch, batch_idx):
+        self.train()
         inputs = batch[:, :-1]
         self.no_of_total_batches += 1
         if inputs.shape != (self.config.batch_size, self.config.seq_len):
@@ -289,6 +290,26 @@ class Transformer(pl.LightningModule):
         print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
         if self.py_lightning_loging == True:
             self.py_lightning_loging('Training Loss', loss, on_step=True, on_epoch=True)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        self.eval()
+        inputs = batch[:, :-1]
+        self.no_of_total_batches += 1
+        if inputs.shape != (self.config.batch_size, self.config.seq_len):
+            print('ERROR: Input has inproper shape')
+            self.no_of_skiped_baches += 1
+            return None #we skip this training step
+        labels = batch[:, 1: ]
+        with torch.no_grad():
+            outputs, auxiliary_loss = self.forward(inputs)
+        outputs = torch.transpose(outputs, 1, 2)
+        loss = self.loss_fn(outputs, labels) 
+        loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
+
+        print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
+        if self.py_lightning_loging == True:
+            self.py_lightning_loging('Validation Loss', loss, on_step=True, on_epoch=True)
         return loss
     
     def configure_optimizers(self):
