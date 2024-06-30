@@ -138,7 +138,7 @@ class MH_Lori(nn.Module):
         if self.treat_mh_lori_as_regular_lori == False:
             result = self.merge_layer(result)
 
-        return result
+        return result, 0 #we need to return 0 as the transformer block class expect load balancing loss
 
     
     def test_if_reshaping_works(self, x):
