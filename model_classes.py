@@ -288,8 +288,7 @@ class Transformer(LightningModule):
         outputs, auxiliary_loss = self.forward(inputs)
         outputs = torch.transpose(outputs, 1, 2)
         loss = self.loss_fn(outputs, labels) 
-        loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
-
+        
         print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
         log_entry = {
             'batch_idx': batch_idx,
@@ -299,6 +298,8 @@ class Transformer(LightningModule):
         self.train_losses_list.append(log_entry)
         if self.py_lightning_loging == True:
             self.py_lightning_loging('Training Loss', loss, on_step=True, on_epoch=True)
+        
+        loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -311,11 +312,10 @@ class Transformer(LightningModule):
             return None #we skip this training step
         labels = batch[:, 1: ]
         with torch.no_grad():
-            outputs, auxiliary_loss = self.forward(inputs)
+            outputs, _ = self.forward(inputs) # auxiliary_loss is not necessary here
         outputs = torch.transpose(outputs, 1, 2)
         loss = self.loss_fn(outputs, labels) 
-        loss += (self.load_balancing_coefficient * auxiliary_loss) # for experts' load balancing
-
+        
         print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
         # Log entry for this validation step
         log_entry = {
@@ -387,7 +387,7 @@ class VectorizedMoE(nn.Module):
         experts_where_ones = torch.reshape(experts_where_ones, shape=(-1, self.num_experts)) #[num_of_tokens, num_experts]
         expert_frequency = experts_where_ones.sum(dim=0, keepdim=True) / experts_where_ones.shape[0] #[1, num_experts]
         expert_frequency = expert_frequency.unsqueeze(dim=0)
-        load_balancing_loss += (expert_frequency * soft_dot).sum()
+        load_balancing_loss *= (expert_frequency * soft_dot).sum()
 
         capacity_aware_ones = torch.where((torch.cumsum(experts_where_ones, dim= 0) <= expert_capacity), input = experts_where_ones, other = 0)
 

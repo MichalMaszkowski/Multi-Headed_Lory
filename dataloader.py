@@ -6,8 +6,6 @@ import torch.utils.data as d
 from transformers import BertTokenizer
 import math
 
-# fraction of articles in respectively train, val, test dataset split:
-proportions = [0.4, 0.4, 0.2]
 
 class MyIterableDataset(d.IterableDataset):
     def __init__(self, dataset, tokenizer, seq_len, num_articles):
@@ -40,7 +38,7 @@ class MyIterableDataset(d.IterableDataset):
             end = min(start + per_worker, self.num_articles)
         return helper(start, end)
     
-def give_dataloaders(batch_size=1, seq_len=20,proportions = [0.4, 0.4, 0.2], development=True):
+def give_dataloaders(batch_size=1, seq_len=513, proportions = [0.5, 0.4, 0.05, 0.05]):
     """Returns a dictionary with train_dataloader, val_dataloader and test_dataloader
     which are created from huggingface wikipedia dataset
     that is split according to "proportions" variable
@@ -48,15 +46,15 @@ def give_dataloaders(batch_size=1, seq_len=20,proportions = [0.4, 0.4, 0.2], dev
     dataloaders yield batches of sequnces of token_ids
     (in fact: a tensor of shape (batch_size, seq_len))
 
-    for development set development atribute to True, to use much smaller dataset"""
-    if development:
-        wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple", trust_remote_code=True) # a smaller dataset for development
-    else:
-        wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.en") # large dataset for training
-
+    proportions - fractions of articles in respectively 
+    null, train, val, test dataset split, where null is discarded,
+    those should be fractions that add up to one"""
+    wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple", trust_remote_code=True)
+    
     wiki_huggingface_dataset = wiki_huggingface_dataset["train"]
     l = d.random_split(wiki_huggingface_dataset, lengths=proportions, generator=torch.Generator().manual_seed(42))
-    train_dataset, val_dataset, test_dataset = l[0], l[1], l[2]
+    train_dataset, val_dataset, test_dataset = l[1], l[2], l[3]
+    l = None
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     

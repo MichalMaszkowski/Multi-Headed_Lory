@@ -131,14 +131,14 @@ class MH_Lori(nn.Module):
         result = torch.cat((result_segment_1, result), dim = 1)
 
         # reshape back into orginal shape. Now, result.shape = [(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim)]
-        # result = torch.transpose(result, 2, 3) We belive that this line schould be there but we are not shure yet
+        # result = torch.transpose(result, 2, 3)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
 
         if self.treat_mh_lori_as_regular_lori == False:
             result = self.merge_layer(result)
 
-        return result  #, average_segment_embedding, expert_weights, merged_experts_1_log, merged_experts_2_log
+        return result, 0 #we need to return 0 as the transformer block class expect load balancing loss
 
     
     def test_if_reshaping_works(self, x):
@@ -150,4 +150,3 @@ class MH_Lori(nn.Module):
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
         print(torch.equal(result, input))
-
