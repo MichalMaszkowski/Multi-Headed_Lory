@@ -219,11 +219,12 @@ class TransformerBlock(torch.nn.Module):
         #sub_with_skip(x) = x + sublayer(norm(x))
         a = self.attention(self.layer_norm1(x))
         result = x + a[0]
-        result = result + self.forward_layer(self.layer_norm2(result))
+        moe_result, load_balancing_loss = self.forward_layer(self.layer_norm2(result))
+        result = result + moe_result
 
         assert x.shape == result.shape
 
-        return result
+        return result, load_balancing_loss
     
 # TokensT = torch.tensor # [BATCH, SEQ_LEN]
 # ModelLT = torch.tensor # [BATCH, SEQ_LEN, VOCAB_SIZE]
