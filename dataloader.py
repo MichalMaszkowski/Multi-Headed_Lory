@@ -49,7 +49,7 @@ def give_dataloaders(batch_size=1, seq_len=513, proportions = [0.5, 0.4, 0.05, 0
     proportions - fractions of articles in respectively 
     null, train, val, test dataset split, where null is discarded,
     those should be fractions that add up to one"""
-    wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple", trust_remote_code=True) # a smaller dataset for development
+    wiki_huggingface_dataset = datasets.load_dataset("wikipedia", "20220301.simple", trust_remote_code=True)
     
     wiki_huggingface_dataset = wiki_huggingface_dataset["train"]
     l = d.random_split(wiki_huggingface_dataset, lengths=proportions, generator=torch.Generator().manual_seed(42))
