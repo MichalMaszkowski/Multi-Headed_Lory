@@ -108,7 +108,8 @@ class MH_Lori(nn.Module):
         merged_experts_2 = merged_experts_2[:, :-1, :, :, :]
         
         # process x by experts
-        x = x.reshape(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim).contiguous()
+        # x.shape = [self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim]
+        x = torch.permute(x, (0, 1, 3, 2, 4)).contiguous()
         x_causal = x[:, 1:, :, :, :]
         # process segments s>1 throuth which gradient flows
         result = torch.einsum("bnhld,bnhid->bnhli", x_causal, merged_experts_1)
