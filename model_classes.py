@@ -363,9 +363,9 @@ class VectorizedMoE(nn.Module):
         self.intermediate_size = config.intermediate_size
 
         # You can change experts representation if you want
-        self.first_linear = nn.Parameter(torch.randn(self.num_experts, self.intermediate_size, self.hidden_size)).to(config.device)
+        self.first_linear = nn.Parameter(torch.randn(self.num_experts, self.intermediate_size, self.hidden_size).to(config.device))
         torch.nn.init.kaiming_uniform_(self.first_linear, nonlinearity='linear')
-        self.second_linear = nn.Parameter(torch.randn(self.num_experts, self.hidden_size, self.intermediate_size)).to(config.device)
+        self.second_linear = nn.Parameter(torch.randn(self.num_experts, self.hidden_size, self.intermediate_size).to(config.device))
         torch.nn.init.kaiming_uniform_(self.second_linear, nonlinearity='linear')
 
         self.router = Router(config)

@@ -52,12 +52,12 @@ class MH_Lori(nn.Module):
         self.num_experts = config.num_experts
         self.intermediate_size = config.intermediate_size
 
-        self.first_linear = nn.Parameter(torch.randn((self.num_experts, self.intermediate_size, self.head_dim)))
+        self.first_linear = nn.Parameter(torch.randn((self.num_experts, self.intermediate_size, self.head_dim)).to(self.device))
         torch.nn.init.kaiming_uniform_(self.first_linear, nonlinearity='linear')
-        self.second_linear = nn.Parameter(torch.randn((self.num_experts, self.head_dim, self.intermediate_size)))
+        self.second_linear = nn.Parameter(torch.randn((self.num_experts, self.head_dim, self.intermediate_size)).to(self.device))
         torch.nn.init.kaiming_uniform_(self.second_linear, nonlinearity='linear')
 
-        self.to(self.device)
+        # self.to(self.device)
 
 
     def forward(self, x):
