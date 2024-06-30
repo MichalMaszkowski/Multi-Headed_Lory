@@ -40,7 +40,7 @@ class MyIterableDataset(d.IterableDataset):
             end = min(start + per_worker, self.num_articles)
         return helper(start, end)
     
-def give_dataloaders(batch_size=1, seq_len=20, development=True):
+def give_dataloaders(batch_size=1, seq_len=20,proportions = [0.4, 0.4, 0.2], development=True):
     """Returns a dictionary with train_dataloader, val_dataloader and test_dataloader
     which are created from huggingface wikipedia dataset
     that is split according to "proportions" variable
