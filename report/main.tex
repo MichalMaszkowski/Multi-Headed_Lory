@@ -6,6 +6,8 @@
 \documentclass[12pt]{article}
  
 \usepackage[margin=1in]{geometry} 
+\usepackage{float}
+\usepackage{graphicx}
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage[
 backend=biber,
@@ -18,6 +20,13 @@ sorting=ynt
 \begin{document}
  
 % --------------------------------------------------------------
+%The grading of the final report
+%takes into consideration four major aspects:
+%- logical structure of the report
+%- problem foundation and reasoning about it
+%- execution of experimental ideas
+%- analysis of the results
+%- academic style and form
 %                         Start here
 % --------------------------------------------------------------
  
@@ -33,9 +42,11 @@ Supervisor: Jan Ludziejewski}
 \begin{abstract}
 % Transformers have become a cornerstone in natural language processing, driving advances in tasks such as machine translation and text generation. The Transformer architecture revolutionized language modeling by enabling parallel information integration across sequences. Improving the attention mechanism is challenging due to its complexity, so researchers often focus on modifying the MLP layer to optimize performance. One of the most crucial advancements was Mixture-of-Experts (MoE) which allows models to scale up significantly in parameter size without proportionate increases in training or inference costs. Despite these advancements, Mixture-of-Experts (MoE) models continue to encounter challenges related to their non-differentiable discrete routing mechanisms and the under-utilization of certain experts. Recent research has concentrated on resolving these issues. This study aims to integrate the strengths of two of these recent innovations in the MoE layer, Multi-Head Mixture-of-Experts (MH-MoE) and Lory, into a unified framework to harness the benefits of both approaches.
 %wersja Michala:
-Recently 2 different MoE architecture improvements were introduced: (1) Lory (\cite{zhong2024lory}) that efficiently scales fully differentiable MoE architecture to autoregressive language modelling pretraining and (2) MH-MoE (\cite{wu2024multihead}) that employs multi-head mechanism to split tokens into subtokens that are processed in parallel before beinng reintegrated together allowing for more fine-grained analytical capabilities. In this paper, we present MH-Lory - the first architecture combining both of these advancements. 
-Experimental results suggest/demonstrate ... Our work highlights the potential of merging Lory and MH-MoE architectures and encourages investigating this issue further with more resouces. 
-Our code is available at \url{https://github.com/MichalMaszkowski/Multi-Headed_Lory}.
+Recently, two different MoE architecture improvements were introduced: (1) Lory (\cite{zhong2024lory}), which efficiently scales a fully differentiable MoE architecture to autoregressive language modeling pretraining, and (2) MH-MoE (\cite{wu2024multihead}), which employs a multi-head mechanism to split tokens into subtokens that are processed in parallel before being reintegrated, allowing for more fine-grained analytical capabilities. In this paper, we present MH-Lory, the first architecture combining both of these advancements. 
+
+Experimental results suggest that our model achieves a slight improvement over the original Lory while maintaining all its benefits. Our work highlights the potential of merging Lory and MH-MoE architectures and encourages further investigation of this issue with more computational resources.
+
+Our code is available at \url{https://github.com/MichalMaszkowski/Multi-Headed_Lory}. %revised with ChatGpt
 \end{abstract}
 \end{minipage}
 \end{center}
@@ -55,13 +66,13 @@ In this work we propose to apply both techniques in a single architecture: intro
 \section{Related work}
 
 \subsection{MH-MoE} 
-In (Sparse) MoE (\cite{shazeer2017outrageously}) that is a baseline for authors of MH-MoE each MoE block consists of $E$ independent feed forward networks [FFNs] called Experts (which we denote as $e_i$) and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. That is for any input token's hidden representation $h \in \mathbb{R}^d$ output of the MoE block is:
+In (Sparse) MoE (\cite{shazeer2017outrageously}) that is a baseline for authors of MH-MoE each MoE block consists of $E$ independent feed forward networks [FFNs] called Experts (which we denote as $e_i$) and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. That is for any input token's hidden representation $h \in \mathbb{R}^d$, output of the MoE block is computed as follows:
 
-\[ output(h)=h+\sum_{i=1}^{i=k} e_i (h)  \cdot g(h, e_i)\]
+\[ \text{output}(h)=h+\sum_{i=1}^{i=k} e_i (h)  \cdot g(h, e_i)\]
 
 MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and then reintegrates them into the original token form. Let us denote number of heads as $H$ and token's hidden representation $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then given $p$-th sub-token the output of the MH-MoE block would be computed as:
 
-\[ output(h_p)= h_p + \sum_{i=1}^{i=k} e_i (h_p)  \cdot g(h_p,e_i)\]
+\[ \text{output}(h_p)= h_p + \sum_{i=1}^{i=k} e_i (h_p)  \cdot g(h_p,e_i)\]
 
 Additionally before splitting tokens they are multiplied by "multi-head projection" matrix, similarly they are multiplied by "merge" matrix after reintegration.
 
@@ -82,16 +93,40 @@ It ensures that batches contain similar documents, so even when one document end
 
 
 \section{Our architecture: MH-Lory}
-Both Lory and MH-MoE report promising gains in performance, while using techniques that we believe can be beneficially combined into MH-Lorry. 
+Both Lory and MH-MoE report promising gains in performance, while using techniques that we believe can be beneficially combined into MH-Lory. 
 
 Combining Lory and MH-MoE architectures admittedly poses a challenge as their strategies aren't orthogonal but diverge slightly. Lory achieves full activation of experts by merging them in pursue of full differentiability. Keeping this feature in the MH-Lory makes one of two advantages of MH-MoE irrelevant as introducing heads can't increase expert activation further. What's more, in Lory whole segments are processed by the same "merged expert" while MH-MoE goes in different direction, routing mere parts of tokens to different experts. Thus Lory decreases the variability of assigned experts between tokens compared to traditional MoE while MH-MoE does the opposite.
 
-The most natural ways to combine Lory and MH-MoE is to use the Lory model as a baseline and modify it by adding heads. More precisely MH-Lory will calculate the distribution over experts used for making "merged expert" once per segment, separately for each head. We hope that we can still make an improvement on Lory by reaping the rewards of allowing more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE. As an additional benefit by introducing expert heads to Lory architecture we decrease the number of parameters per expert allowing to increase the number of experts.
+The hope is to make an improvement on Lory by reaping the rewards of allowing more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE. As an additional benefit by introducing expert heads to Lory architecture we decrease the number of parameters per expert allowing to increase the number of experts. This allows for more diverse routing strategies and might increase expert specialization.
+
+The most natural way to combine Lory and MH-MoE is to use the Lory model as a baseline and modify it by adding heads. More precisely, after the input is passed through the Multi-Head linear layer 
+it's divided into $N$ segments of length $T=\frac{L}{N}$ and then further divide each token into $H$ sub-tokens where $H$ denotes the number of MH-Lory heads.
+For each segment $n_i$ and for each head $h_j$, MH-Lory calculates the gating distribution over $E$ experts. This distribution is then used to create a unique merged expert, which is responsible for processing that particular head from the given segment. Finally, the tokens are reassembled into their original shape and passed through the linear Merging layer. Similar to MH-MoE, the Multi-head layer and the Merging layer ensure that information from a token is effectively divided into sub-tokens and then accurately merged back together.
+
+For an input token $t_k$, assuming that MH-Lory block has $E$ feed-forward expert networks, each parameterised by weights $\theta_i$ its output is computed as follows:
+
+\[\text{output}(t_k) = \text{Merge-Layer}(\text{Concatenation}(t_k^1, \dots t_k^H))\] 
+
+where
+
+\[t_k^i =  \text{FFN}(s_k^i, \sum_{i=1}^E \theta_i w_i)\]
+
+and
+
+\[s_k^1,\dots, s_k^H = \text{Divide}(\text{Multi-Head-Layer}(t_k))\]
+
+and
+
+\[w_i = \text{Softmax}(g(A))\]
+
+where A represents the avarage embeding of the sub-tokens coresponding to a given head from previous segment, $g$ represents the Router gating function and Divide is the operation of spliting a token into $H$ sub tokens along the hidden dimension.
+
+%The hope is to make an improvement on Lory by reaping the rewards of allowing more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE.
+
+%to ważne zdanie dałem wyżej
 
 \section{Experiments}
 Our main goal was to compare four MoE Transformer models: Lory, (Sparse) MoE, MH-MoE and MH-Lory, our architecture, in terms of perplexity on a language modelling task with equal number of parameters. We also compare the inference and training efficiency of these models.
-
-%Due to limitations in computational resources, we did not evaluate our models on any downstream tasks. Instead, we assessed their ability to predict the next tokens from the dataset. The simple MoE Transformer was selected as our baseline model for comparison. %to jest wlasnie language modelling
 
 \subsection{Hyperparameters}
 
@@ -101,15 +136,14 @@ Our main goal was to compare four MoE Transformer models: Lory, (Sparse) MoE, MH
 \hline
 Parameter & \textbf{MoE} & \textbf{MH-MoE} & \textbf{Lory} & \textbf{MH-Lory} \\
 \hline
-FFNs within layer & Data 2 & Data 3 & Data 4 & Data 5 \\
-Transformer blocks & Data 7 & Data 8 & Data 9 & Data 10 \\
-Hidden size  & Data 12 & Data 13 & Data 14 & Data 15 \\
-Number of experts& Data 12 & Data 13 & Data 14 & Data 15 \\
-Expert embedding dimension& Data 12 & Data 13 & Data 14 & Data 15 \\
+Transformer blocks & 12 & 12 & 12 & 12 \\
+Hidden size  & 256 & 256 & 256 & 256 \\
+Number of experts& 3 & 8 & 3 & 8 \\
+
 \hline
-Number of heads & - & Data 13 & - & Data 15 \\
-Number of segments $T$ & - & - & d & d \\
-Load balancing coefficient $\alpha$ & d & d & - & d \\
+Number of heads & - & 4 & - & 4 \\
+Number of segments $T$ & - & - & 2 & 4 \\
+Load balancing coefficient $\alpha$ & 0.01 & 0.01 & - & - \\
 Capacity factor $c$ & 3 & 3 & - & - \\
 \hline
 \end{tabular}
@@ -118,14 +152,14 @@ Capacity factor $c$ & 3 & 3 & - & - \\
 \end{table}
 The number of heads is specific to the MH-MoE and MH-Lory models, affecting their ability to attend to multiple positions simultaneously. The number of segments $T$ is a unique parameter for the Lory and MH-Lory models, determining the sequence's segmentation granularity. 
 The load balancing coefficient $\alpha$ and capacity factor $c$ play crucial roles in distributing computational load among experts. 
-For MoE and MH-MoE models, the training loss is a sum of a primary cross-entropy loss related to the target task and an auxiliary load balancing loss (\cite{wu2024multihead}). The load balancing loss is computed as follows:
+For MoE and MH-MoE models, the training loss is a sum of a primary cross-entropy loss related to the target task (only this loss is logged) and an auxiliary load balancing loss (\cite{wu2024multihead}). The load balancing loss is computed as follows:
 \[ L_{balance} = \frac{N}{|\ddot{X}|} \sum_{p=1}^{N} \sum_{x_i^j \in \ddot{X}} t_p \cdot g(f_p^{FFN}) \]
 where $N$ denotes the number of experts, $|\ddot{X}|$ is the number of sub-tokens contained in $\ddot{X}$. $g(f_p^{FFN})$ is the value of routing a certain sub-token $x_{i,j}$ into the $p^{th}$ expert.
 
 
-\subsection{Training}
+\subsection{Experimental Set-up}
 Constrained by limited computational resources we trained and validated the aforementioned models on the pre-processed "20220301.simple" subset from Wikipedia dataset (\cite{wikidump}).
-The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using Cross-Entropy loss and the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters differs between the 4 models. In the Lory model all experts' embeddings are utilized during both the forward and backward passes as they are "merged" into weighted experts. This merging operation increses training times for both the Lory and MH-Lory models.
+The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using Cross-Entropy loss and the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. In each model we used a BERT tokenizer (\cite{devlin2018bert}) with a vocabulary size of 30522 tokens. We also used a Rotary Positional Embedding (\cite{su2024roformer}) in each attention layer to capture the positional information in input sequences. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters differs between the 4 models. In the Lory model all experts' embeddings are utilized during both the forward and backward passes as they are "merged" into weighted experts. This merging operation increses training times for both the Lory and MH-Lory models.
 
 
 \section{Results}
