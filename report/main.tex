@@ -65,18 +65,17 @@ In this work, we propose to apply both techniques within a single architecture: 
 \section{Related work}
 
 \subsection{MH-MoE} 
-In (Sparse) MoE (\cite{shazeer2017outrageously}) that is a baseline for authors of MH-MoE each MoE block consists of $E$ independent feed forward networks [FFNs] called Experts (which we denote as $e_i$) and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. That is for any input token's hidden representation $h \in \mathbb{R}^d$, output of the MoE block is computed as follows:
+In (Sparse) MoE (\cite{shazeer2017outrageously}), which serves as the baseline for the authors of MH-MoE, each MoE block consists of $E$ independent feed-forward networks (FFNs) called Experts (denoted as $e_i$​) and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. For any input token's hidden representation $h \in \mathbb{R}^d$, the output of the MoE block is computed as follows:
 
 \[ \text{output}(h)=h+\sum_{i=1}^{i=k} e_i (h)  \cdot g(h, e_i)\]
 
-MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and then reintegrates them into the original token form. Let us denote number of heads as $H$ and token's hidden representation $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then given $p$-th sub-token the output of the MH-MoE block would be computed as:
+MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and reintegrates them into the original token form. Let us denote the number of heads as $H$ and the token's hidden representation $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then given $p$-th sub-token the output of the MH-MoE block is computed as follows:
 
 \[ \text{output}(h_p)= h_p + \sum_{i=1}^{i=k} e_i (h_p)  \cdot g(h_p,e_i)\]
 
-Additionally before splitting tokens they are multiplied by "multi-head projection" matrix, similarly they are multiplied by "merge" matrix after reintegration.
+Additionally, before splitting tokens, they are multiplied by a "multi-head projection" matrix, and similarly, they are multiplied by a "merge" matrix after reintegration.
 
-Thanks to this technique the average volume of data routed to a specific expert is increased by a factor of $H$.
-Moreover, while current tokenization patterns limit a model's ability to capture multiple semantic interpretations of tokens, MH-MoE enables capturing information from diverse feature spaces across these experts (\cite{wu2024multihead}).
+Thanks to this technique, the average volume of data routed to a specific expert is increased by a factor of $H$. Moreover, while current tokenization patterns limit a model's ability to capture multiple semantic interpretations of tokens, MH-MoE enables capturing information from diverse feature spaces across these experts (\cite{wu2024multihead}).
 
 
 \subsection{Lory}
