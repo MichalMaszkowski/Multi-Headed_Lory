@@ -175,16 +175,20 @@ Memory Usage & Data 12 & Data 13 & Data 14 & Data 15 \\
 
 \section{Conclusions}
 
-TODO
+%TODO
+Results of our experiments suggest that when it comes to perplexity MH-Lory achieves slightly better results than original Lory, although due to small size of the used dataset and length of training this isn't a conclusive result as all 4 models achieve comparable perplexity on the dataset we used. This uncertainty can be resolved by using much greater computational resources than those at our disposal.
+
+Nevertheless our results suggest that the model performance doesn't suffer because of the combination of techniques that we propose. This encourages its further investigation as its performance potential may become visible only at greater scales, especially as theoretical considerations suggest that it should yield benefits over original Lory, which is the state of the art fully-differentiable architecture, as MH-Lory allows for greater number of experts and finer grained analysis capabilities of semantic concepts in individual token.
 
 We leave it for a future research to test how these models scale, and whether they improve if the dataset is pre-processed using similarity-batching technique introduced by \cite{shi2023context}. We hope to pursue these questions in case of promising experiment results.
 
 It may also be interesting to experiment with an alternative version (v2) of MH-Lory and compare it with the original (v1). In the alternative one (v2) each head would have a separate set of experts from which a "merged expert" is computed, instead of sharing one set of experts between all heads as in v1. Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters (there would be $N \cdot H$ experts in MH-Lory-v2 compared to $N$ experts in MH-Lory-v1). But on the other hand MH-Lory-v2 could allow for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning.
 
+
 %
 
 
-\printbibliography 
+\printbibliography  
 
 \appendix
 
