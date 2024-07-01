@@ -281,7 +281,7 @@ class Transformer(LightningModule):
         inputs = batch[:, :-1]
         self.no_of_total_batches += 1
         if inputs.shape != (self.config.batch_size, self.config.seq_len):
-            print('ERROR: Input has inproper shape')
+            # print('ERROR: Input has inproper shape')
             self.no_of_skiped_baches += 1
             return None #we skip this training step
         labels = batch[:, 1: ]
@@ -289,7 +289,7 @@ class Transformer(LightningModule):
         outputs = torch.transpose(outputs, 1, 2)
         loss = self.loss_fn(outputs, labels) 
         
-        print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
+        # print(f'   TRRAINING: Batch {batch_idx}, loss {loss}')
         log_entry = {
             'batch_idx': batch_idx,
             'train_loss': loss.item(),  # Assuming loss is a tensor; convert to float if necessary
@@ -316,7 +316,7 @@ class Transformer(LightningModule):
         outputs = torch.transpose(outputs, 1, 2)
         loss = self.loss_fn(outputs, labels) 
         
-        print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
+        # print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
         # Log entry for this validation step
         log_entry = {
             'batch_idx': batch_idx,
