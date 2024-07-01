@@ -45,20 +45,36 @@ Transformer architecture (\cite{vaswani2017attention}) introduced parallelizable
 
 Recently multiple works have tried to address non-differentiability of expert choice in the MoE architecture (\cite{Puigcerver2023FromST}, \cite{muqeeth2023soft}). In (\cite{muqeeth2023soft}) each token is processed  by a "merged expert" which has parameters that are a sum of experts' parameters weighted uniquely for every token according to the router. This operation is differentiable, but increases computational complexity, scaling linearly with the number of experts, which makes it impractical for auto-regressive tasks. This problem is answered by Lory (\cite{zhong2024lory}) which recomputes the "merged expert" only once per segment (comprising about few hundred tokens) instead of doing so for each token, while avoiding information leakage.
 
-A related problem of low expert activation is solved by Multi-Head Mixture-of-Experts (MH-MoE)(\cite{wu2024multihead}). At the same time it claims to answer the lack of fine-grained capabilities to analyze multiple semantic concepts within individual token. 
+A related problem of low expert activation is addressed by Multi-Head Mixture-of-Experts (MH-MoE)(\cite{wu2024multihead}). At the same time it claims to answer the lack of fine-grained capabilities to analyze multiple semantic concepts within individual token. 
 It does so by splitting tokens into sub-tokens (as many as there are "heads") and then assigning and processing those in parallel with experts before reintegrating them (the naming convention resembles that of multi-head attention, though it is worth to note that the number of heads in these two parts doesn't need to be related).
 
+TODO: write a bit about our model here
+
+
+    
 \section{Related work}
 
- We were inspired by two recent works: Lory: Fully Differentiable Mixture-of-Experts for Autoregressive Language Model Pre-training (\cite{zhong2024lory}) and Multi-Head Mixture-of-Experts (\cite{wu2024multihead}).
-% Lory was heavily inspired by (\cite{muqeeth2023soft}). The authors of (\cite{muqeeth2023soft}) propose to, for each token, calculate weights for each expert and then calculate a weighted sum of experts. This new matrix is used to process the token in question. This approach works fine when it is used to fine tune models on downstream tasks, but the computational cost of recalculating new matrix in every step make this approach unfeasible to scale. 
+\subsection{MH-MoE} 
+In (Sparse) MoE (\cite{shazeer2017outrageously}) that is a baseline for authors of MH-MoE each MoE block consists of $E$ independent feed forward networks [FFNs] called Experts, $e_i$, and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. That is for any input token's hidden representation $h \in \mathbb{R}^d$ output of the MoE block is:
+
+\[ output(h)=h+\sum_{i=1}^{i=k} e_i (h)  \cdot g(h, e_i)\]
+
+MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and then reintegrates them into the original token form. Let us denote number of heads as $H$ and token's hidden representation $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then given $p$-th sub-token output of the MH-MoE block would be computed as:
+
+\[ output(h_p)= h_p + \sum_{i=1}^{i=k} e_i (h_p)  \cdot g(h_p,e_i)\]
+
+Additionally before splitting tokens they are multiplied by "multi-head projection" matrix, similarly they are multiplied by "merge" matrix after reintegration.
+
+Thanks to this technique the average volume of data routed to a specific expert is increased by a factor of $H$.
+Moreover, while current tokenization patterns limit a model's ability to capture multiple semantic interpretations of tokens, MH-MoE enables capturing information from diverse feature spaces across these experts (\cite{wu2024multihead}).
+
+
 \subsection{Lory}
 Assume that we have $E$ feed-forward expert networks, each parameterised by weights $\theta_i$. To process a sequence of $L$ tokens, with hidden representations $h_1, h_2, \dots h_L$ we divide it into $N$ segments of length $T = \frac{L}{N}$. Each segment will be processed by a single "merged expert" that is created based on the information from the previous segment. Let's suppose that we currently want to start to process segment $k>1$ (so we want to process tokens $h_k, h_{k+1}\dots ,h_{k+T -1}$, and previous segment consisted of tokens $h_{k - T}, h_{k-T+1}\dots ,h_{k-1}$). We process it like this:
 \[\text{output}(h_{k + i}) = \text{FFN}(h_{k+i}, \sum_{j=1}^E \theta_j w_j) \text{,   where  } w_j = \text{Softmax}(R(\frac{1}{T}\sum_{q = 0}^{T-1}h_{k-T+q}))_j\] where $\text{FFN}(a, b)$ means feed-forward networks with weights $b$ on input $a$ and $R$ is our router network.
 
 This approach allows us to compute weighted sum of experts only once per segment making it suitable for auto-regressive tasks. The authors also used similarity-based data batching technique introduced by (\cite{shi2023context}). 
 
-%
 It prevents information leakage and keep the causal nature of the model.
 At inference the prompt is used to calculate one routing used throughout generation.
 For processing the first segment, the authors propose to create an expert matrix by using all tokens from the first segment, $w_j = \text{Softmax}(R(\frac{1}{T}\sum_{q = 0}^{T-1}h_{q}))_j$, and adding a stop gradient operation on top of $R$.
@@ -67,24 +83,8 @@ The authors also used similarity-based data batching technique introduced by (\c
 It ensures that batches contain similar documents, so even when one document ends and other start inside one segment, routing decision made based on the previous document can still be relevant to the next document, which enhances expert specialization in later layers.
 
 
-\subsection{MH-MoE}
-Multi head Mixture of Experts (\cite{wu2024multihead}) addresses 2 problems usually exhibited by the standard architecture:
-low expert activation and lack of fine-grained analytical capabilities. 
-In Sparse Mixtures of Experts (\cite{shazeer2017outrageously}) that authors treat as a baseline each MoE layer consists of $E$ independent Experts, $e_i$, which are feed forward networks and a gating function, $g$ (router) used to calculate weights over these experts' outputs, with k of them abeing activated (according to top-k gated values). So for input $j$-th token with hidden representation $h^j \in \mathbb{R}^d$ output of the MoE layer is:
 
-\[ output(h^j)=h^j+\sum_{i=1}^{i=k} e_i (h^j)  \cdot g(h^j, e_i)\]
-
- \[ O(h^j)=h^j+\sum_{i=1}^{i=N} e_i \cdot h^j  \cdot g(h^j, e_i)= h^j + \sum_{i=1}^{i=N} e_i \cdot h^j  \cdot \frac{exp( e_i \cdot h^j)}{\sum_{i=1}^{i=N} exp(e_i \cdot h^j)}\]
-
-MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and then reintegrates them into the original token form. Let us denote number of heads as $H$ and token of hidden size $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then output of the $p$-th sub-token from $j$-th token MH-MoE layer would be computed as:
-
-\[ output(h_p^j)= h_p^j + \sum_{i=1}^{i=k} e_i (h_p^j)  \cdot g(h_p^j,e_i)\]
-
-
-This way the average volume of data routed to a specific expert is increased by a factor of $H$.
-Additionally, while current tokenization patterns limit a model's ability to capture multiple semantic interpretations of tokens, MH-MoE enables capturing information from diverse feature spaces across these experts.
-
-\section{MH-Lory}
+\section{Our architecture: MH-Lory}
 Both Lory and MH-MoE report promising gains in performance, while using techniques that we believe can be beneficially combined into MH-Lorry. 
 
 Combining Lory and MH-MoE architectures admittedly poses a challenge as their strategies aren't orthogonal but diverge slightly. Lory achieves full activation of experts by merging them in pursue of full differentiability. Keeping this feature in the MH-Lory makes one of two advantages of MH-MoE irrelevant as introducing heads can't increase expert activation further. What's more, in Lory whole segments are processed by the same "merged expert" while MH-MoE goes in different direction, routing mere parts of tokens to different experts. Thus Lory decreases the variability of assigned experts between tokens compared to traditional MoE while MH-MoE does the opposite.
