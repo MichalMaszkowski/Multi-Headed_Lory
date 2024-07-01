@@ -55,11 +55,11 @@ In this work we propose to apply both techniques in a single architecture: intro
 \section{Related work}
 
 \subsection{MH-MoE} 
-In (Sparse) MoE (\cite{shazeer2017outrageously}) that is a baseline for authors of MH-MoE each MoE block consists of $E$ independent feed forward networks [FFNs] called Experts, $e_i$, and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. That is for any input token's hidden representation $h \in \mathbb{R}^d$ output of the MoE block is:
+In (Sparse) MoE (\cite{shazeer2017outrageously}) that is a baseline for authors of MH-MoE each MoE block consists of $E$ independent feed forward networks [FFNs] called Experts (which we denote as $e_i$) and a gating function (router), $g$, used to calculate weights over these experts' outputs, with k of them (activated according to top-k gated values) processing any token. That is for any input token's hidden representation $h \in \mathbb{R}^d$ output of the MoE block is:
 
 \[ output(h)=h+\sum_{i=1}^{i=k} e_i (h)  \cdot g(h, e_i)\]
 
-MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and then reintegrates them into the original token form. Let us denote number of heads as $H$ and token's hidden representation $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then given $p$-th sub-token output of the MH-MoE block would be computed as:
+MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, then processes them in parallel by diverse experts, and then reintegrates them into the original token form. Let us denote number of heads as $H$ and token's hidden representation $h \in \mathbb{R}^d $ split into $H$ sub-tokens as $h_1,h_2,...,h_H \in \mathbb{R}^{\frac{d}{H}} $. Then given $p$-th sub-token the output of the MH-MoE block would be computed as:
 
 \[ output(h_p)= h_p + \sum_{i=1}^{i=k} e_i (h_p)  \cdot g(h_p,e_i)\]
 
@@ -70,13 +70,11 @@ Moreover, while current tokenization patterns limit a model's ability to capture
 
 
 \subsection{Lory}
-Assume that we have $E$ feed-forward expert networks, each parameterised by weights $\theta_i$. To process a sequence of $L$ tokens, with hidden representations $h_1, h_2, \dots h_L$ we divide it into $N$ segments of length $T = \frac{L}{N}$. Each segment will be processed by a single "merged expert" that is created based on the information from the previous segment. Let's suppose that we currently want to start to process segment $k>1$ (so we want to process tokens $h_k, h_{k+1}\dots ,h_{k+T -1}$, and previous segment consisted of tokens $h_{k - T}, h_{k-T+1}\dots ,h_{k-1}$). We process it like this:
-\[\text{output}(h_{k + j}) = (h_{k + j} + \text{FFN}(h_{k+j}, \sum_{i=1}^E \theta_i w_i) \text{,   where  } w_i = \text{Softmax}(g(\frac{1}{T}\sum_{q = 0}^{T-1}h_{k-T+q}), e_i)\] where $\text{FFN}(a, b)$ means an expert (feed-forward networks) with weights $b$ on input $a$ and $R$ is our router network.
-
-This approach allows to compute weighted sum of experts only once per segment making it suitable for auto-regressive tasks. It prevents information leakage and keeps the causal nature of the model.
-
-At inference the prompt is used to calculate one routing used throughout generation. 
+In Lory architecture (\cite{zhong2024lory}) authors aim to create a fully differentiable and computationally feasible MoE. To process a sequence of $L$ tokens, with hidden representations $h_1, h_2, \dots h_L$ it is divided into $N$ segments of length $T = \frac{L}{N}$. Each segment will be processed by a single "merged expert" that is created based on the information from the previous segment. Let's suppose that we currently want to start to process segment $k>1$ (so we want to process tokens $h_k, h_{k+1}\dots ,h_{k+T -1}$, while previous segment consisted of tokens $h_{k - T}, h_{k-T+1}\dots ,h_{k-1}$). Assuming that a Lory block has $E$ feed-forward expert networks, each parameterised by weights $\theta_i$ its output is calculated as follows:
+\[\text{output}(h_{k + j}) = (h_{k + j} + \text{FFN}(h_{k+j}, \sum_{i=1}^E \theta_i w_i) \text{,   where  } w_i = \text{Softmax}(g(\frac{1}{T}\sum_{q = 0}^{T-1}h_{k-T+q}), e_i)\] where $\text{FFN}(a, b)$ means an expert (feed-forward networks) with weights $b$ applied to input $a$ and $g$ the gating function (router).
 For processing the first segment, the authors propose to create an expert matrix by using all tokens from the first segment, and adding a stop gradient operation on top of the router.
+This approach allows to compute weighted sum of experts only once per segment making it suitable for auto-regressive tasks. It prevents information leakage and keeps the causal nature of the model.
+At inference the prompt is used to calculate one merged expert used throughout generation. 
 
 The authors also used similarity-based data batching technique introduced by (\cite{shi2023context}). 
 It ensures that batches contain similar documents, so even when one document ends and other start inside one segment, routing decision made based on the previous document can still be relevant to the next document, which enhances expert specialization in later layers.
