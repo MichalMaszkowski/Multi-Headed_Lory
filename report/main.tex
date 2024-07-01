@@ -43,15 +43,15 @@ Our code is available at \url{https://github.com/MichalMaszkowski/Multi-Headed_L
 \section{Introduction}
 Transformer architecture (\cite{vaswani2017attention}) introduced parallelizable way to combine information from distant parts of sequences allowing effective language modeling. It was improved by Mixture-of-Experts [MoE] (\cite{shazeer2017outrageously}) which allowed to train models with significantly more parameters without much increase in training or inference costs. But due to non-differentiable discrete routing, such as top-k expert-activation routing, MoE has a problem with learning effective routing strategies (\cite{muqeeth2023soft}). It also suffers from low expert activation and lack of fine-grained capabilities to analyze multiple semantic concepts within individual token (\cite{wu2024multihead}).
 
-Recently multiple works have tried to address non-differentiability of expert choice in the MoE architecture (\cite{Puigcerver2023FromST}, \cite{muqeeth2023soft}). In (\cite{muqeeth2023soft}) each token is processed  by a "merged expert" which has parameters that are a sum of experts' parameters weighted uniquely for every token according to the router. This operation is differentiable, but increases computational complexity, scaling linearly with the number of experts, which makes it impractical for auto-regressive tasks. This problem is answered by Lory (\cite{zhong2024lory}) which recomputes the "merged expert" only once per segment (comprising about few hundred tokens) instead of doing so for each token, while avoiding information leakage.
+Recently multiple works have tried to address non-differentiability of expert choice in the MoE architecture (\cite{Puigcerver2023FromST}, \cite{muqeeth2023soft}). In (\cite{muqeeth2023soft}) each token is processed  by a "merged expert" which has parameters that are a sum of experts' parameters weighted uniquely for every token according to the router. This operation is differentiable, but increases computational complexity and memory requirements, scaling linearly with the number of experts, which makes it impractical for auto-regressive tasks. This problem is answered by Lory (\cite{zhong2024lory}) which recomputes the "merged expert" only once per segment (comprising about few hundred tokens) instead of doing so for each token, while avoiding information leakage.
 
 A related problem of low expert activation is addressed by Multi-Head Mixture-of-Experts (MH-MoE)(\cite{wu2024multihead}). At the same time it claims to answer the lack of fine-grained capabilities to analyze multiple semantic concepts within individual token. 
-It does so by splitting tokens into sub-tokens (as many as there are "heads") and then assigning and processing those in parallel with experts before reintegrating them (the naming convention resembles that of multi-head attention, though it is worth to note that the number of heads in these two parts doesn't need to be related).
+It does so by splitting tokens into sub-tokens (as many as there are "heads") and then assigning and processing those in parallel with experts before reintegrating them. The naming convention resembles that of multi-head attention, though it is worth to note that the number of heads in these two parts doesn't need to be related.
 
-TODO: write a bit about our model here
+In this work we propose to apply both techniques in a single architecture: introduced by Lory (\cite{zhong2024lory}) and by Multi-Head Mixture-of-Experts (MH-MoE)(\cite{wu2024multihead}). We introduce novel MoE architecture, MH-Lory, that is fully-differentiable and enables fine-grained capabilities to analyze different semantic meanings of every token. MH-Lory is a Lory baseline with addition of heads, that is precisely described in section 3 of this paper.
 
 
-    
+
 \section{Related work}
 
 \subsection{MH-MoE} 
