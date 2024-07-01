@@ -316,7 +316,7 @@ class Transformer(LightningModule):
         outputs = torch.transpose(outputs, 1, 2)
         loss = self.loss_fn(outputs, labels) 
         
-        print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
+        # print(f'   VALIDATION: Batch {batch_idx}, loss {loss}')
         # Log entry for this validation step
         log_entry = {
             'batch_idx': batch_idx,
