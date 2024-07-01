@@ -57,8 +57,6 @@ class MH_Lori(nn.Module):
         self.second_linear = nn.Parameter(torch.randn((self.num_experts, self.head_dim, self.intermediate_size)).to(self.device))
         torch.nn.init.kaiming_uniform_(self.second_linear, nonlinearity='linear')
 
-        # self.to(self.device)
-
 
     def forward(self, x):
         #x.shape = [batch size, seq len, hidden dim]
@@ -69,42 +67,23 @@ class MH_Lori(nn.Module):
         #Dividing into lori segments
         x = x.reshape(self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim).contiguous()
         average_segment_embedding = torch.mean(x, dim = 2).to(self.device)
-        # print(f'avarage segment embeding shape = {average_segment_embedding.shape} [batch size, no segments, num_heads, head_dim] (to jest input routera)') #do tego miejsca dziala tak samo jak miriam
         # average_segment_embedding.size = [batch size, no segments, num_heads, head_dim]
-        expert_weights = self.router(average_segment_embedding).to(self.device) #to jest inne niz analogiczny moment u  miriam #routery robią to samo, ale tylko kiedy bs 
-        #jest większy od 1. U miriam do routera zawsze wchodzi tensor o bs 1? Jednak routery robią to samo nawet dla bs 1. Ale expert weights są różne?????
+        expert_weights = self.router(average_segment_embedding).to(self.device)
         # expert_weights shape = [bs, no seq, num heads, num experts]
-        expert_weights_log = expert_weights
 
-        #Tu jest dobrze
-
-        # print(f'expert_weights shape = {expert_weights.shape} [bs, no seq, num heads, num experts]')
-        # print(expert_weights)
         # calculating merged experts
         expert_weights = torch.transpose(expert_weights, 0, 3) # [num experts, no seq, num heads, bs]
         expert_weights = expert_weights.reshape(self.num_experts, 1, 1, self.no_segments, self.num_heads, self.batch_size) 
 
-        # tu jest tak samo
-
         merged_experts_1 = self.first_linear.reshape(self.num_experts, self.intermediate_size, self.head_dim, 1, 1, 1)
         merged_experts_1 = (merged_experts_1 * expert_weights).sum(dim = 0) #[intermidiate, head_dim, no_seg, num heads, bs]
-        # print('merged expert shape: [intermidiate, head_dim, no_seg, num heads, bs] ', merged_experts_1.shape)
         merged_experts_1 = torch.permute(merged_experts_1, (4, 2, 3, 0, 1))
-        merged_experts_1_log = merged_experts_1
-        # print('merged expert shape: [self.batch_size, self.no_segments, self.num_heads, self.intermediate_size, self.head_dim] ', merged_experts_1.shape)
-
-        #Do tego miejsca jest dobrze
-
-        # merged_experts_1 = merged_experts_1.reshape(self.batch_size, self.no_segments, self.num_heads, self.intermediate_size, self.head_dim)
-        # print(f'merged expert 1 parameter count: {torch.numel(merged_experts_1):,}')
         merged_experts_1 = merged_experts_1[:, :-1, :, :, :] #we discard the last segment as expert created for it is never used
 
 
         merged_experts_2 = self.second_linear.reshape(self.num_experts, self.head_dim, self.intermediate_size, 1, 1, 1)
         merged_experts_2 = (merged_experts_2 * expert_weights).sum(dim = 0) #[head dim, intermidiete, n seg, num heads, bs]
         merged_experts_2 = torch.permute(merged_experts_2, (4, 2, 3, 0, 1))
-        merged_experts_2_log = merged_experts_2
-        # merged_experts_2 = merged_experts_2.reshape(self.batch_size, self.no_segments, self.num_heads, self.head_dim, self.intermediate_size)
         merged_experts_2 = merged_experts_2[:, :-1, :, :, :]
         
         # process x by experts
@@ -132,7 +111,7 @@ class MH_Lori(nn.Module):
         result = torch.cat((result_segment_1, result), dim = 1)
 
         # reshape back into orginal shape. Now, result.shape = [(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim)]
-        # result = torch.transpose(result, 2, 3)
+        result = torch.transpose(result, 2, 3)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
 
@@ -140,14 +119,3 @@ class MH_Lori(nn.Module):
             result = self.merge_layer(result)
 
         return result, 0 #we need to return 0 as the transformer block class expect load balancing loss
-
-    
-    def test_if_reshaping_works(self, x):
-        input = x
-        x = x.reshape(self.batch_size, self.seq_len, self.num_heads, self.head_dim).contiguous()
-        x = x.reshape(self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim).contiguous()
-        x = x.reshape(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim).contiguous()
-        result = x
-        result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
-        result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
-        print(torch.equal(result, input))
