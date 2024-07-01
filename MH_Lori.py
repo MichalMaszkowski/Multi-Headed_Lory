@@ -83,12 +83,13 @@ class MH_Lori(nn.Module):
 
         merged_experts_2 = self.second_linear.reshape(self.num_experts, self.head_dim, self.intermediate_size, 1, 1, 1)
         merged_experts_2 = (merged_experts_2 * expert_weights).sum(dim = 0) #[head dim, intermidiete, n seg, num heads, bs]
-        merged_experts_2 = torch.permute(merged_experts_2, (4, 2, 3, 0, 1))
+        merged_experts_2 = torch.permute(merged_experts_2, (4, 2, 3, 0, 1)) #[bs, n seg, num heads, head dim, intermidiete]
         merged_experts_2 = merged_experts_2[:, :-1, :, :, :]
         
         # process x by experts
         # x.shape = [self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim]
         x = torch.permute(x, (0, 1, 3, 2, 4)).contiguous()
+        # x.shape = [self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim]
         x_causal = x[:, 1:, :, :, :]
         # process segments s>1 throuth which gradient flows
         result = torch.einsum("bnhld,bnhid->bnhli", x_causal, merged_experts_1)
@@ -110,8 +111,8 @@ class MH_Lori(nn.Module):
         # concatenate processed segments
         result = torch.cat((result_segment_1, result), dim = 1)
 
-        # reshape back into orginal shape. Now, result.shape = [(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim)]
-        result = torch.transpose(result, 2, 3)
+        # reshape back into orginal shape. Now (before) result.shape = [(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim)]
+        result = torch.transpose(result, 2, 3) # result.shape = [(self.batch_size, self.no_segments, self.segment_len, self.num_heads, self.head_dim)]
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
 
