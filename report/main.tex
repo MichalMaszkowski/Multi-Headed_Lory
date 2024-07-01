@@ -84,26 +84,16 @@ MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, th
 This way the average volume of data routed to a specific expert is increased by a factor of $H$.
 Additionally, while current tokenization patterns limit a model's ability to capture multiple semantic interpretations of tokens, MH-MoE enables capturing information from diverse feature spaces across these experts.
 
-\section{Data}
-We opted to utilize the WikiBooks dataset for training our models. This dataset, accessible via Kaggle (https://www.kaggle.com/datasets/dhruvildave/wikibooks-dataset), comprises the full content of Wikipedia across 12 languages. We selected the English version due to its extensive scope. This dataset is particularly suited for our objectives, as it offers a substantial volume of data necessary for effectively training and evaluating the performance of our proposed models, while still aligning with our computational and memory limitations.
-
-
-\subsection{Similarity batching}
-We organize our dataset using similarity batching, following the method proposed by authors of Lory (\cite{zhong2024lory}). For each document \( d \) in a set \( D \), we use Contriever (\cite{izacard2022unsupervised}) to create document embeddings and then retrieve the top \( k \) most similar documents \( N(d) \). Document similarity is measured by the cosine similarity of their Contriever embeddings: 
-\[
-\text{sim}(d_i, d_j) = \cos(C(d_i), C(d_j)),
-\]
-where \( C \) is the Contriever encoder. We implement an efficient approximate nearest-neighbors search using the FAISS library (\cite{johnson2019billion}). Documents are then sorted by similarity and grouped into batches of consecutive documents for training. Using a greedy algorithm akin to \cite{shi2023context}, we iteratively build lists by starting with a single document and adding the most similar unselected document. If all connected documents are selected, we restart with a new document, repeating the process until all documents are processed. Ultimately, we obtain a permuted dataset of documents ready for training.
-
-
-\section{Methods}
-Both Lory and MH-MoE report promising gains in performance, while using techniques that we believe can be beneficially combined into MH-Lorry. Our main goal is to compare 2 versions of our model to Lory, MH-MoE and baseline MoE in terms of perplexity on a language modelling task with the equal number of active parameters. We will also compare the overall number of parameters that each has, and estimate inference and training efficiency. 
-
-Constrained by limited computational resources we plan to train and validate the aforementioned models on the Wikipedia dataset (\cite{wikidump}). We leave it for a future research to test how these models scale. We hope to pursue this question in case of promising experiment results.
+\section{MH-Lory}
+Both Lory and MH-MoE report promising gains in performance, while using techniques that we believe can be beneficially combined into MH-Lorry. 
 
 Combining Lory and MH-MoE architectures admittedly poses a challenge as their strategies aren't orthogonal but diverge slightly. Lory achieves full activation of experts by merging them in pursue of full differentiability. Keeping this feature in the MH-Lory makes one of two advantages of MH-MoE irrelevant as introducing heads can't increase expert activation further. What's more, in Lory whole segments are processed by the same "merged expert" while MH-MoE goes in different direction, routing mere parts of tokens to different experts. Thus Lory decreases the variability of assigned experts between tokens compared to traditional MoE while MH-MoE does the opposite.
 
 The most natural ways to combine Lory and MH-MoE is to use the Lory model as a baseline and modify it by adding heads. More precisely MH-Lory will calculate the distribution over experts used for making "merged expert" once per segment, separately for each head. We hope that we can still make an improvement on Lory by reaping the rewards of allowing more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE. As an additional benefit by introducing expert heads to Lory architecture we decrease the number of parameters per expert allowing to increase the number of experts.
+
+\section{Experiments}
+Our main goal was to compare 2 versions of our model to Lory, MH-MoE and baseline MoE in terms of perplexity on a language modelling task with the equal number of active parameters. We will also compare the overall number of parameters that each has, and estimate inference and training efficiency.
+Constrained by limited computational resources we plan to train and validate the aforementioned models on the Wikipedia dataset (\cite{wikidump}). We leave it for a future research to test how these models scale. We hope to pursue this question in case of promising experiment results.
 
 We will experiment with and compare two versions of MH-Lory depending on whether all heads share the set of experts from which a "merged expert" is computed (v1) or whether each head has a separate set of experts (v2). Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters. But on the other hand MH-Lory-v2 allows for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning. There are $N$ experts in MH-Lory-v1 and $N \cdot H$ experts in MH-Lory-v2.
 
