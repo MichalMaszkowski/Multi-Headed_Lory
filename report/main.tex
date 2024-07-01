@@ -92,9 +92,9 @@ The most natural ways to combine Lory and MH-MoE is to use the Lory model as a b
 Our main goal was to compare 2 versions of our model to Lory, MH-MoE and baseline MoE in terms of perplexity on a language modelling task with the equal number of active parameters. We will also compare the overall number of parameters that each has, and estimate inference and training efficiency.
 Constrained by limited computational resources we plan to train and validate the aforementioned models on the Wikipedia dataset (\cite{wikidump}). We leave it for a future research to test how these models scale. We hope to pursue this question in case of promising experiment results.
 
-We will experiment with and compare two versions of MH-Lory depending on whether all heads share the set of experts from which a "merged expert" is computed (v1) or whether each head has a separate set of experts (v2). Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters. But on the other hand MH-Lory-v2 allows for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning. There are $N$ experts in MH-Lory-v1 and $N \cdot H$ experts in MH-Lory-v2.
+We experimented with and compared two versions of MH-Lory depending on whether all heads share the set of experts from which a "merged expert" is computed (v1) or whether each head has a separate set of experts (v2). Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters. But on the other hand MH-Lory-v2 allows for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning. There are $N$ experts in MH-Lory-v1 and $N \cdot H$ experts in MH-Lory-v2.
 
-%opis MH-Lory po opisie bardziej dokladnym jak dzialaja oba
+%opis MH-Lory po opisie bardziej dokladnym jak dzialaja oba WYZEJ
 
 \section{Models}
 
@@ -135,14 +135,14 @@ where $N$ denotes the number of experts, $|\ddot{X}|$ is the number of sub-token
  
 \subsection{Training} 
 The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters naturally differs. In the Lory model, each output is computed using weighted experts, meaning that all experts' embeddings are utilized during both the forward and backward passes. This resulted in prolonged training times for both the Lory and MH-Lory models. 
-We tested our models using Cross-Entropy loss. The loss on both the training and validation sets was highly similar for each model, indicating that none of the models overfitted to the training data. 
+We tested our models using Cross-Entropy loss. 
 
 
 \section{Results}
 
 \subsection{Model comparison}
 \subsubsection{Loss}
- PLOTS probne
+ PLOTS test
 
 \begin{figure}[H]
     \centering
@@ -151,7 +151,7 @@ We tested our models using Cross-Entropy loss. The loss on both the training and
     \label{fig:validation_loss}
 \end{figure}
 
-The training and validation loss for are depicted in Figure \ref{fig:train_val_loss}, demonstrating the performance over epochs.
+Validation losses for all models are depicted in Figure \ref{fig:validation_loss}, demonstrating the performance over epochs. From the plot we can see that ....
 
 \begin{figure}[H]
     \centering
@@ -159,6 +159,9 @@ The training and validation loss for are depicted in Figure \ref{fig:train_val_l
     \caption{Training and Validation Loss Comparison}
     \label{fig:train_val_loss}
 \end{figure}
+
+The validation and training losses for all four models are illustrated in Figure \ref{fig
+}, showcasing their performance over the epochs. The observed discrepancy between the validation and training losses suggests that the models are overfitting to the training data. This overfitting is likely due to the relatively small size of the dataset used considering large size of the models.
 
 \subsubsection{Performance metrics}
 
