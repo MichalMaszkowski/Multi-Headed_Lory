@@ -89,19 +89,9 @@ Combining Lory and MH-MoE architectures admittedly poses a challenge as their st
 The most natural ways to combine Lory and MH-MoE is to use the Lory model as a baseline and modify it by adding heads. More precisely MH-Lory will calculate the distribution over experts used for making "merged expert" once per segment, separately for each head. We hope that we can still make an improvement on Lory by reaping the rewards of allowing more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE. As an additional benefit by introducing expert heads to Lory architecture we decrease the number of parameters per expert allowing to increase the number of experts.
 
 \section{Experiments}
-Our main goal was to compare 2 versions of our model to Lory, MH-MoE and baseline MoE in terms of perplexity on a language modelling task with the equal number of active parameters. We will also compare the overall number of parameters that each has, and estimate inference and training efficiency.
-Constrained by limited computational resources we plan to train and validate the aforementioned models on the Wikipedia dataset (\cite{wikidump}). We leave it for a future research to test how these models scale. We hope to pursue this question in case of promising experiment results.
+Our main goal was to compare four MoE Transformer models: Lory, (Sparse) MoE, MH-MoE and MH-Lory, our architecture, in terms of perplexity on a language modelling task with equal number of parameters. We also compare the inference and training efficiency of these models.
 
-We experimented with and compared two versions of MH-Lory depending on whether all heads share the set of experts from which a "merged expert" is computed (v1) or whether each head has a separate set of experts (v2). Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters. But on the other hand MH-Lory-v2 allows for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning. There are $N$ experts in MH-Lory-v1 and $N \cdot H$ experts in MH-Lory-v2.
-
-%opis MH-Lory po opisie bardziej dokladnym jak dzialaja oba WYZEJ
-
-\section{Models}
-
-%We implemented and compared four models: Baseline MoE Transformer, Multi Head MoE, Lory for Expert Merging and the Combination of MH-MoE and Lory which we will call MH-Lory. We compared them based on model perplexity, numbers of parameters needed to achieve similar pre-training loss, computational and memory cost, inference and training time.
-We implemented and evaluated four distinct models: the Baseline MoE Transformer, the Multi-Head MoE (MH-MoE), Lory for Expert Merging, and a hybrid model combining MH-MoE and Lory, referred to as MH-Lory. The models were compared based on several metrics, including model perplexity, the number of parameters required to achieve comparable pre-training loss, computational and memory costs, as well as inference and training times.
-%As our computational resources were quite limited, we did not evaluate our models on any downstream tasks, rather checked their ability to predict next tokens from the dataset. As our baseline we chose simple MoE transformer.
-Due to limitations in computational resources, we did not evaluate our models on any downstream tasks. Instead, we assessed their ability to predict the next tokens from the dataset. The simple MoE Transformer was selected as our baseline model for comparison.
+%Due to limitations in computational resources, we did not evaluate our models on any downstream tasks. Instead, we assessed their ability to predict the next tokens from the dataset. The simple MoE Transformer was selected as our baseline model for comparison. %to jest wlasnie language modelling
 
 \subsection{Hyperparameters}
 
@@ -128,14 +118,14 @@ Capacity factor $c$ & 3 & 3 & - & - \\
 \end{table}
 The number of heads is specific to the MH-MoE and MH-Lory models, affecting their ability to attend to multiple positions simultaneously. The number of segments $T$ is a unique parameter for the Lory and MH-Lory models, determining the sequence's segmentation granularity. 
 The load balancing coefficient $\alpha$ and capacity factor $c$ play crucial roles in distributing computational load among experts. 
-For MoE and MH-MoE models, the loss function consists of a primary loss related to the target task and an auxiliary load balancing loss (\cite{wu2024multihead}). The load balancing loss is computed as follows:
+For MoE and MH-MoE models, the training loss is a sum of a primary cross-entropy loss related to the target task and an auxiliary load balancing loss (\cite{wu2024multihead}). The load balancing loss is computed as follows:
 \[ L_{balance} = \frac{N}{|\ddot{X}|} \sum_{p=1}^{N} \sum_{x_i^j \in \ddot{X}} t_p \cdot g(f_p^{FFN}) \]
 where $N$ denotes the number of experts, $|\ddot{X}|$ is the number of sub-tokens contained in $\ddot{X}$. $g(f_p^{FFN})$ is the value of routing a certain sub-token $x_{i,j}$ into the $p^{th}$ expert.
 
- 
-\subsection{Training} 
-The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters naturally differs. In the Lory model, each output is computed using weighted experts, meaning that all experts' embeddings are utilized during both the forward and backward passes. This resulted in prolonged training times for both the Lory and MH-Lory models. 
-We tested our models using Cross-Entropy loss. 
+
+\subsection{Training}
+Constrained by limited computational resources we trained and validated the aforementioned models on the pre-processed "20220301.simple" subset from Wikipedia dataset (\cite{wikidump}).
+The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using Cross-Entropy loss and the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters differs between the 4 models. In the Lory model all experts' embeddings are utilized during both the forward and backward passes as they are "merged" into weighted experts. This merging operation increses training times for both the Lory and MH-Lory models.
 
 
 \section{Results}
@@ -161,7 +151,7 @@ Validation losses for all models are depicted in Figure \ref{fig:validation_loss
 \end{figure}
 
 The validation and training losses for all four models are illustrated in Figure \ref{fig
-}, showcasing their performance over the epochs. The observed discrepancy between the validation and training losses suggests that the models are overfitting to the training data. This overfitting is likely due to the relatively small size of the dataset used considering large size of the models.
+}, showcasing their performance over the epochs. The growing discrepancy between the validation and training losses suggests that the models may begin to overfit to the training data. This overfitting is likely due to the relatively small size of the dataset used.
 
 \subsubsection{Performance metrics}
 
