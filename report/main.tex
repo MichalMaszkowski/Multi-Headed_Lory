@@ -71,13 +71,12 @@ Moreover, while current tokenization patterns limit a model's ability to capture
 
 \subsection{Lory}
 Assume that we have $E$ feed-forward expert networks, each parameterised by weights $\theta_i$. To process a sequence of $L$ tokens, with hidden representations $h_1, h_2, \dots h_L$ we divide it into $N$ segments of length $T = \frac{L}{N}$. Each segment will be processed by a single "merged expert" that is created based on the information from the previous segment. Let's suppose that we currently want to start to process segment $k>1$ (so we want to process tokens $h_k, h_{k+1}\dots ,h_{k+T -1}$, and previous segment consisted of tokens $h_{k - T}, h_{k-T+1}\dots ,h_{k-1}$). We process it like this:
-\[\text{output}(h_{k + i}) = \text{FFN}(h_{k+i}, \sum_{j=1}^E \theta_j w_j) \text{,   where  } w_j = \text{Softmax}(R(\frac{1}{T}\sum_{q = 0}^{T-1}h_{k-T+q}))_j\] where $\text{FFN}(a, b)$ means feed-forward networks with weights $b$ on input $a$ and $R$ is our router network.
+\[\text{output}(h_{k + j}) = (h_{k + j} + \text{FFN}(h_{k+j}, \sum_{i=1}^E \theta_i w_i) \text{,   where  } w_i = \text{Softmax}(g(\frac{1}{T}\sum_{q = 0}^{T-1}h_{k-T+q}), e_i)\] where $\text{FFN}(a, b)$ means an expert (feed-forward networks) with weights $b$ on input $a$ and $R$ is our router network.
 
-This approach allows us to compute weighted sum of experts only once per segment making it suitable for auto-regressive tasks. The authors also used similarity-based data batching technique introduced by (\cite{shi2023context}). 
+This approach allows to compute weighted sum of experts only once per segment making it suitable for auto-regressive tasks. It prevents information leakage and keeps the causal nature of the model.
 
-It prevents information leakage and keep the causal nature of the model.
-At inference the prompt is used to calculate one routing used throughout generation.
-For processing the first segment, the authors propose to create an expert matrix by using all tokens from the first segment, $w_j = \text{Softmax}(R(\frac{1}{T}\sum_{q = 0}^{T-1}h_{q}))_j$, and adding a stop gradient operation on top of $R$.
+At inference the prompt is used to calculate one routing used throughout generation. 
+For processing the first segment, the authors propose to create an expert matrix by using all tokens from the first segment, and adding a stop gradient operation on top of the router.
 
 The authors also used similarity-based data batching technique introduced by (\cite{shi2023context}). 
 It ensures that batches contain similar documents, so even when one document ends and other start inside one segment, routing decision made based on the previous document can still be relevant to the next document, which enhances expert specialization in later layers.
