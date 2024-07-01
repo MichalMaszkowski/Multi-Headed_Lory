@@ -145,7 +145,24 @@ We tested our models using Cross-Entropy loss. The loss on both the training and
 
 \subsection{Model comparison}
 \subsubsection{Loss}
- PLOTS
+ PLOTS probne
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{val_val.png}
+    \caption{Validation Loss Comparison for Models}
+    \label{fig:validation_loss}
+\end{figure}
+
+The training and validation loss for are depicted in Figure \ref{fig:train_val_loss}, demonstrating the performance over epochs.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{train_val.png}
+    \caption{Training and Validation Loss Comparison}
+    \label{fig:train_val_loss}
+\end{figure}
+
 \subsubsection{Performance metrics}
 
 \begin{table}[h!]
@@ -174,9 +191,18 @@ Memory Usage & Data 12 & Data 13 & Data 14 & Data 15 \\
 
 
 \printbibliography 
+
+\appendix
+
+
+\section{Additional Details}
+The code for data processing, models and their training can be viewed on our github repository under https://github.com/
+MichalMaszkowski/Multi-Headed Lory. We included not-vectorized version of MH-MoE, Lory and MH-Lory which we implemented to test our vectorized versions. 
+
+
 % 
---------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------
 %     You don't have to mess with anything below this line.
 % --------------------------------------------------------------After MH-MoE layer comes merge layer in which outputs $O(h_p^j)$ are rearranged in the original order of sub-tokens. 
- 
+
 \end{document}
