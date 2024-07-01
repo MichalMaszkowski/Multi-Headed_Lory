@@ -132,7 +132,7 @@ class MH_Lori(nn.Module):
         result = torch.cat((result_segment_1, result), dim = 1)
 
         # reshape back into orginal shape. Now, result.shape = [(self.batch_size, self.no_segments, self.num_heads, self.segment_len, self.head_dim)]
-        # result = torch.transpose(result, 2, 3)
+        result = torch.transpose(result, 2, 3)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.num_heads, self.head_dim)
         result = result.reshape(self.batch_size, self.no_segments * self.segment_len, self.hidden_dim)
 
