@@ -44,9 +44,7 @@ Supervisor: Jan Ludziejewski}
 %wersja Michala:
 Recently, two different MoE architecture improvements were introduced: (1) Lory (\cite{zhong2024lory}), which efficiently scales a fully differentiable MoE architecture to autoregressive language modeling pretraining, and (2) MH-MoE (\cite{wu2024multihead}), which employs a multi-head mechanism to split tokens into subtokens that are processed in parallel before being reintegrated, allowing for more fine-grained analytical capabilities. In this paper, we present MH-Lory, the first architecture combining both of these advancements. 
 
-Experimental results suggest that our model achieves a slight improvement over the original Lory while maintaining all its benefits. Our work highlights the potential of merging Lory and MH-MoE architectures and encourages further investigation of this issue with more computational resources.
-
-Our code is available at \url{https://github.com/MichalMaszkowski/Multi-Headed_Lory}. %revised with ChatGpt
+Experimental results suggest that our model achieves a slight improvement over the original Lory while maintaining all its benefits. Our work highlights the potential of merging Lory and MH-MoE architectures and encourages further investigation of this issue with more computational resources. Our code is available at \url{https://github.com/MichalMaszkowski/Multi-Headed_Lory}. %revised with ChatGpt
 \end{abstract}
 \end{minipage}
 \end{center}
@@ -76,6 +74,7 @@ MH-MoE uses a multi-head mechanism to split each input token into sub-tokens, th
 Additionally, before splitting tokens, they are multiplied by a "multi-head projection" matrix, and similarly, they are multiplied by a "merge" matrix after reintegration.
 
 Thanks to this technique, the average volume of data routed to a specific expert is increased by a factor of $H$. Moreover, while current tokenization patterns limit a model's ability to capture multiple semantic interpretations of tokens, MH-MoE enables capturing information from diverse feature spaces across these experts (\cite{wu2024multihead}).
+
 
 
 \subsection{Lory}
@@ -117,7 +116,7 @@ and
 
 \[w_i = \text{Softmax}(g(A))\]
 
-where A represents the avarage embeding of the sub-tokens coresponding to a given head from previous segment, $g$ represents the Router gating function and Divide is the operation of spliting a token into $H$ sub tokens along the hidden dimension.
+where A represents the average embedding of the sub-tokens corresponding to a given head from previous segment, $g$ represents the Router gating function and Divide is the operation of splitting a token into $H$ sub tokens along the hidden dimension.
 
 %The hope is to make an improvement on Lory by reaping the rewards of allowing more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE.
 
@@ -157,14 +156,15 @@ where $N$ denotes the number of experts, $|\ddot{X}|$ is the number of sub-token
 
 \subsection{Experimental Set-up}
 Constrained by limited computational resources we trained and validated the aforementioned models on the pre-processed "20220301.simple" subset from Wikipedia dataset (\cite{wikidump}).
-The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using Cross-Entropy loss and the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. In each model we used a BERT tokenizer (\cite{devlin2018bert}) with a vocabulary size of 30522 tokens. We also used a Rotary Positional Embedding (\cite{su2024roformer}) in each attention layer to capture the positional information in input sequences. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters differs between the 4 models. In the Lory model all experts' embeddings are utilized during both the forward and backward passes as they are "merged" into weighted experts. This merging operation increses training times for both the Lory and MH-Lory models.
+The dataset was partitioned using an 80-10-10 train-validation-test split. Each model was trained for 10 epochs using Cross-Entropy loss and the AdamW optimizer with a learning rate of $0.006$, betas set to $(0.9, 0.95)$, and a batch size of 20. In each model we used a BERT tokenizer (\cite{devlin2018bert}) with a vocabulary size of 30522 tokens. We also used a Rotary Positional Embedding (\cite{su2024roformer}) in each attention layer to capture the positional information in input sequences. For comparison purposes, the number of parameters in each model was standardized to 0.1 billion. The number of active parameters differs between the 4 models. In the Lory model all experts' embeddings are utilized during both the forward and backward passes as they are "merged" into weighted experts. This merging operation increases training times for both the Lory and MH-Lory models.
 
 
 \section{Results}
 
-\subsection{Model comparison}
-\subsubsection{Loss}
- PLOTS test
+% \subsection{Models' comparison}
+% \subsubsection{Cross-Entropy Losses}
+
+Figure \ref{fig:validation_loss} presents the validation losses of our best models, illustrating their performance over the epochs. The plot indicates that all models exhibit comparable performance. Despite our efforts, training a highly effective Lory model proved challenging. Nevertheless, our approach demonstrates behavior akin to sparse MoE and MH-MoE models, outperforming the simple Lory model.
 
 \begin{figure}[H]
     \centering
@@ -173,7 +173,10 @@ The dataset was partitioned using an 80-10-10 train-validation-test split. Each 
     \label{fig:validation_loss}
 \end{figure}
 
-Validation losses for all models are depicted in Figure \ref{fig:validation_loss}, demonstrating the performance over epochs. From the plot we can see that ....
+%Figure \ref{fig:validation_loss} presents the validation losses of our best models, illustrating their performance over the epochs. The plot indicates that all models exhibit comparable performance. Despite our efforts, training a highly effective Lory model proved challenging. Nevertheless, our approach demonstrates behavior akin to sparse MoE and MH-MoE models, outperforming the simple Lory model.
+%illustrates the validation losses for our best models, showcasing their performance across epochs. The plot reveals that all models perform comparably. Despite our efforts, we were unable to train a highly effective Lory model. Nevertheless, our approach demonstrates similar behavior to sparse MoE and MH-MoE, outperforming a simple Lori model.
+
+The validation and training losses for our best models are illustrated in Figure \ref{fig:train_val_loss}, showcasing their performance over the epochs. The growing discrepancy between the validation and training losses suggests that the models may begin to overfit to the training data. This overfitting is likely due to the relatively small size of the dataset used.
 
 \begin{figure}[H]
     \centering
@@ -182,45 +185,58 @@ Validation losses for all models are depicted in Figure \ref{fig:validation_loss
     \label{fig:train_val_loss}
 \end{figure}
 
-The validation and training losses for all four models are illustrated in Figure \ref{fig
-}, showcasing their performance over the epochs. The growing discrepancy between the validation and training losses suggests that the models may begin to overfit to the training data. This overfitting is likely due to the relatively small size of the dataset used.
+% The validation and training losses for our best models are illustrated in Figure \ref{fig:train_val_loss}, showcasing their performance over the epochs. The growing discrepancy between the validation and training losses suggests that the models may begin to overfit to the training data. This overfitting is likely due to the relatively small size of the dataset used.
 
-\subsubsection{Performance metrics}
+% \subsubsection{Performance metrics}
 
-\begin{table}[h!]
-\centering
-\begin{tabular}{|l|c|c|r|r|}
-\hline
-Metric & \textbf{MoE} & \textbf{MH-MoE} & \textbf{Lory} & \textbf{MH-Lory} \\
-\hline
-Model Size & Data 2 & Data 3 & Data 4 & Data 5 \\
-Training Time & Data 7 & Data 8 & Data 9 & Data 10 \\
-Inference Time  & Data 12 & Data 13 & Data 14 & Data 15 \\
-FLOPs & Data 12 & Data 13 & Data 14 & Data 15 \\
-Memory Usage & Data 12 & Data 13 & Data 14 & Data 15 \\
+% \begin{table}[h!]
+% \centering
+% \begin{tabular}{|l|c|c|r|r|}
+% \hline
+% Metric & \textbf{MoE} & \textbf{MH-MoE} & \textbf{Lory} & \textbf{MH-Lory} \\
+% \hline
+% Model Size & Data 2 & Data 3 & Data 4 & Data 5 \\
+% Training Time & Data 7 & Data 8 & Data 9 & Data 10 \\
+% Inference Time  & Data 12 & Data 13 & Data 14 & Data 15 \\
+% FLOPs & Data 12 & Data 13 & Data 14 & Data 15 \\
+% Memory Usage & Data 12 & Data 13 & Data 14 & Data 15 \\
 
-\hline
-\end{tabular}
-\caption{Models' performance}
-\label{tab:performance_table}
-\end{table}
+% \hline
+% \end{tabular}
+% \caption{Models' performance}
+% \label{tab:performance_table}
+% \end{table}
+
+\section{Discussion}
+\subsection{Limitations}
+Results of our experiments suggest that when it comes to perplexity MH-Lory achieves slightly better results than original Lory, although due to small size of the used dataset and length of training this isn't a conclusive result as all 4 models achieve comparable perplexity on the dataset we used. Because of our limited resources, we were not able to perform an extensive search for the best model. This uncertainty can be resolved by using much greater computational resources than those at our disposal.
+
+The superior performance of our approach compared to Lori warrants further investigation. However, given the modest size (0.1B) of all models, this is not definitive proof of our model's superiority. Nonetheless, it suggests that our model may be more stable than Lori, which is an improvement. 
+
+Nevertheless our results suggest that the model performance doesn't suffer because of the combination of techniques that we propose. This encourages its further investigation as its performance potential may become visible only at greater scales, especially as theoretical considerations suggest that it should yield benefits over original Lory, which is the state of the art fully-differentiable architecture, as MH-Lory allows for greater number of experts and more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE.
+\subsection{Further research}
+All of our models were initially trained on a fraction of the Wikipedia dataset, which poses a significant limitation due to the reduced diversity and volume of training data. This can result in sub-optimal performance and a lack of generalization to new data. To address this issue, we plan to re-train the models using the entire Wikipedia dataset, thereby enhancing their robustness and accuracy. Furthermore, we intend to implement the similarity-batching technique introduced by Shi et al. (2023) during pre-processing, as this technique is most effective when applied to the full dataset. By doing so, we anticipate improved model performance through more efficient training and better generalization.
+
+It may also be interesting to experiment with an alternative version (v2) of MH-Lory and compare it with the original (v1). In the alternative one (v2) each head would have a separate set of experts from which a "merged expert" is computed, instead of sharing one set of experts between all heads as in v1. Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters (there would be $N \cdot H$ experts in MH-Lory-v2 compared to $N$ experts in MH-Lory-v1). But on the other hand MH-Lory-v2 could allow for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning.
+
 
 \section{Conclusions}
 
 %TODO
-Results of our experiments suggest that when it comes to perplexity MH-Lory achieves slightly better results than original Lory, although due to small size of the used dataset and length of training this isn't a conclusive result as all 4 models achieve comparable perplexity on the dataset we used. This uncertainty can be resolved by using much greater computational resources than those at our disposal.
+% Results of our experiments suggest that when it comes to perplexity MH-Lory achieves slightly better results than original Lory, although due to small size of the used dataset and length of training this isn't a conclusive result as all 4 models achieve comparable perplexity on the dataset we used. This uncertainty can be resolved by using much greater computational resources than those at our disposal.
 
-Nevertheless our results suggest that the model performance doesn't suffer because of the combination of techniques that we propose. This encourages its further investigation as its performance potential may become visible only at greater scales, especially as theoretical considerations suggest that it should yield benefits over original Lory, which is the state of the art fully-differentiable architecture, as MH-Lory allows for greater number of experts and finer grained analysis capabilities of semantic concepts in individual token.
+% Nevertheless our results suggest that the model performance doesn't suffer because of the combination of techniques that we propose. This encourages its further investigation as its performance potential may become visible only at greater scales, especially as theoretical considerations suggest that it should yield benefits over original Lory, which is the state of the art fully-differentiable architecture, as MH-Lory allows for greater number of experts and more fine-grained understanding of multiple semantic concepts within a token as happens in MH-MoE.
 
-We leave it for a future research to test how these models scale, and whether they improve if the dataset is pre-processed using similarity-batching technique introduced by \cite{shi2023context}. We hope to pursue these questions in case of promising experiment results.
+We have introduced MH-Lori, a novel integration of two state-of-the-art architectures. Through extensive training and testing, we have shown that our approach performs on par with, and potentially better than, existing alternatives.
+We leave it for a future research to test how these models scale, and whether they improve if the dataset is pre-processed using similarity-batching technique introduced by (\cite{shi2023context}). We hope to pursue these questions further in the future.
 
-It may also be interesting to experiment with an alternative version (v2) of MH-Lory and compare it with the original (v1). In the alternative one (v2) each head would have a separate set of experts from which a "merged expert" is computed, instead of sharing one set of experts between all heads as in v1. Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters (there would be $N \cdot H$ experts in MH-Lory-v2 compared to $N$ experts in MH-Lory-v1). But on the other hand MH-Lory-v2 could allow for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning.
+% It may also be interesting to experiment with an alternative version (v2) of MH-Lory and compare it with the original (v1). In the alternative one (v2) each head would have a separate set of experts from which a "merged expert" is computed, instead of sharing one set of experts between all heads as in v1. Intuitively MH-Lory-v1 has advantage of increasing the number of examples (sub-tokens) per expert and having less parameters (there would be $N \cdot H$ experts in MH-Lory-v2 compared to $N$ experts in MH-Lory-v1). But on the other hand MH-Lory-v2 could allow for greater specialization of heads, potentially leading each head to focus on a particular aspect of token meaning.
 
 
 %
 
 
-\printbibliography  
+\printbibliography 
 
 \appendix
 
